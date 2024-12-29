@@ -9,7 +9,7 @@
 ## Installation
 
 ```bash
-npm install prisma-generator-zero
+npm install @passionfroot/prisma-generator-zero
 ```
 
 ## Usage
@@ -34,7 +34,7 @@ If you want to customize the behavior of the generator you can use the following
 
 ```prisma
 generator zero {
-  output   = "generate/one" // Specify output dir
+  output   = "generated/one" // Specify output dir
   prettier = true // When true, the output will be formatted using prettier
 }
 ```
