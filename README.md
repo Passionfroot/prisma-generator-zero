@@ -1,6 +1,6 @@
 # prisma-generator-zero
 
-`prisma-generator-zero` is a generator for [prisma](www.prisma.io) that generates a [zero](https://zero.rocicorp.dev/) schema from your Prisma schema. This includes schemas of models, enums, and relationships.
+`prisma-generator-zero` is a generator for [prisma](https://www.prisma.io) that generates a [Zero](https://zero.rocicorp.dev/) schema from your Prisma schema. This includes schemas of models, enums, and relationships.
 
 ## Known issues and Limitations
 
