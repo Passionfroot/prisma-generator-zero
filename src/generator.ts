@@ -144,8 +144,17 @@ generatorHandler({
         }
 
         // Add primary key
-        const primaryKey = model.primaryKey?.name || model.fields.find((f) => f.isId)?.name || "id";
-        output += `  primaryKey: "${primaryKey}",\n`;
+        const primaryKey = model.primaryKey?.fields
+          ? model.primaryKey.fields
+          : model.fields.find((f) => f.isId)?.name;
+
+        if (!primaryKey) {
+          throw new Error(`No primary key found for ${model.name}`);
+        }
+
+        const primaryKeyString = JSON.stringify(primaryKey);
+
+        output += `  primaryKey: ${primaryKeyString},\n`;
         output += "} as const;\n\n";
       });
     }
