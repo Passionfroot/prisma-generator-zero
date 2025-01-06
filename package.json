@@ -1,6 +1,6 @@
 {
   "name": "@passionfroot/prisma-generator-zero",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A Prisma generator for generating Zero schema with ease",
   "main": "./dist/generator.js",
   "bin": {
