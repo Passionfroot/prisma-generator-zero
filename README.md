@@ -34,7 +34,12 @@ If you want to customize the behavior of the generator you can use the following
 
 ```prisma
 generator zero {
-  output   = "generated/one" // Specify output dir
-  prettier = true // When true, the output will be formatted using prettier
+  // Specify output dir
+  output   = "generated/one"
+  // When true, the output will be formatted using prettier
+  prettier = true
+  // By default, the generator will keep track of changes to the schema and automatically bump the version.
+  // You can opt-out from this behavior by setting `schemaVersion`.
+  schemaVersion = 10
 }
 ```
