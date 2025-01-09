@@ -1,6 +1,6 @@
 {
   "include": ["src/**/*"],
-  "exclude": ["**/node_modules"],
+  "exclude": ["**/node_modules", "**/__tests__"],
   "compilerOptions": {
     "target": "ES2019",
     "module": "commonjs",
@@ -13,6 +13,7 @@
     "baseUrl": ".",
     "moduleResolution": "node",
     "resolveJsonModule": true,
+    "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
     "paths": {

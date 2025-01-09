@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DMMF, GeneratorOptions } from "@prisma/generator-helper";
 import * as fs from "fs/promises";
-import { onGenerate } from "./generator";
+import { onGenerate } from "../generator";
 
 // Mock fs/promises
 vi.mock("fs/promises", () => ({
