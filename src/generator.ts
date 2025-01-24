@@ -1,97 +1,105 @@
-import type { DMMF } from "@prisma/generator-helper";
-import { generatorHandler, GeneratorOptions } from "@prisma/generator-helper";
-import { writeFile, mkdir, readFile } from "fs/promises";
-import { join } from "path";
-import { createHash } from "crypto";
+import type { DMMF } from "@prisma/generator-helper"
+import { generatorHandler, GeneratorOptions } from "@prisma/generator-helper"
+import { writeFile, mkdir, readFile } from "fs/promises"
+import { join } from "path"
+import { createHash } from "crypto"
 
-import { version } from "../package.json";
+import { version } from "../package.json"
 
 type Config = {
-  name: string;
-  prettier: boolean;
-  resolvePrettierConfig: boolean;
-  schemaVersion?: number;
-};
+  name: string
+  prettier: boolean
+  resolvePrettierConfig: boolean
+  schemaVersion?: number
+}
 
 function mapPrismaTypeToZeroType(field: DMMF.Field): string {
   const typeMap: Record<string, string> = {
-    String: "string",
-    Boolean: "boolean",
-    Int: "number",
-    Float: "number",
-    DateTime: "number", // Zero uses timestamps
-    Json: "json",
-    BigInt: "number",
-    Decimal: "number",
-  };
+    String: "string()",
+    Boolean: "boolean()",
+    Int: "number()",
+    Float: "number()",
+    DateTime: "number()", // Zero uses timestamps
+    Json: "json()",
+    BigInt: "number()",
+    Decimal: "number()",
+  }
 
-  let output = `${field.name}: `;
+  let output = `${field.name}: `
   if (field.kind === "enum") {
-    output += `enumeration<${field.type}>(${field.isRequired ? "" : "true"})`;
-    return output;
+    output += `enumeration<${field.type}>()${field.isRequired ? "" : ".optional()"}`
+    return output
   }
 
   // If it's not an enum, we need to handle required and not required fields differently
-  const value = typeMap[field.type] || "string";
+  const value = typeMap[field.type] || "string"
   if (field.isRequired) {
-    output += `"${value}"`;
+    output += `${value}`
   } else {
-    output += `{ type: "${value}", optional: true }`;
+    output += `${value}.optional()`
   }
 
-  return output;
+  return output
 }
 
 function generateRelationships(model: DMMF.Model, dmmf: DMMF.Document) {
-  const relationships: string[] = [];
-
+  const relationships: string[] = []
   model.fields
     .filter((field) => field.relationName)
     .forEach((field) => {
-      const relName = field.name;
-      let sourceField: string;
-      let destField: string;
+      const relName = field.name
+      let sourceField: string
+      let destField: string
 
       if (field.isList) {
         // For "many" side relationships, we need to find the matching field in the target model
         // that references back to this model
-        const targetModel = dmmf.datamodel.models.find((m) => m.name === field.type);
+        const targetModel = dmmf.datamodel.models.find(
+          (m) => m.name === field.type,
+        )
         const backReference = targetModel?.fields.find(
-          (f) => f.relationName === field.relationName && f.type === model.name
-        );
-        sourceField = "id";
-        destField = backReference?.relationFromFields?.[0] || "id";
+          (f) => f.relationName === field.relationName && f.type === model.name,
+        )
+        sourceField = "id"
+        destField = backReference?.relationFromFields?.[0] || "id"
       } else {
         // For "one" side relationships, use the foreign key
-        sourceField = field.relationFromFields?.[0] || "id";
-        destField = field.relationToFields?.[0] || "id";
+        sourceField = field.relationFromFields?.[0] || "id"
+        destField = field.relationToFields?.[0] || "id"
       }
 
-      const destModel = field.type;
+      const destModel = field.type
 
-      relationships.push(`    ${relName}: {
-      sourceField: "${sourceField}",
-      destField: "${destField}",
-      destSchema: () => ${destModel}Schema,
-    }`);
-    });
+      relationships.push(`
+          ${relName}: many({
+          sourceField: ['${sourceField}'],
+          destField: ['${destField}'],
+          destSchema: ${destModel}Schema,
+      })`)
+    })
 
-  return relationships.join(",\n");
+  let modelStringStart = ` const ${model.name}Relationships = relationships(${model.name}Schema,({many, one})=>({`
+  let modelStringEnd = `})) ` + `\n\n`
+
+  return modelStringStart + relationships + modelStringEnd
 }
 
 function getTableName(model: DMMF.Model) {
-  return model.dbName || model.name;
+  return model.dbName || model.name
 }
 
-function generateSchemaHash(models: DMMF.Model[], enums: DMMF.DatamodelEnum[]): string {
-  const hash = createHash('sha256');
-  
+function generateSchemaHash(
+  models: DMMF.Model[],
+  enums: DMMF.DatamodelEnum[],
+): string {
+  const hash = createHash("sha256")
+
   // Only hash the structural elements that affect the schema
   const schemaStructure = {
-    models: models.map(model => ({
+    models: models.map((model) => ({
       name: model.name,
       dbName: model.dbName,
-      fields: model.fields.map(f => ({
+      fields: model.fields.map((f) => ({
         // Only include field properties that affect the schema
         name: f.name,
         type: f.type,
@@ -105,176 +113,206 @@ function generateSchemaHash(models: DMMF.Model[], enums: DMMF.DatamodelEnum[]): 
       })),
       primaryKey: model.primaryKey,
       uniqueFields: model.uniqueFields,
-      uniqueIndexes: model.uniqueIndexes
+      uniqueIndexes: model.uniqueIndexes,
     })),
-    enums: enums.map(enumType => ({
+    enums: enums.map((enumType) => ({
       name: enumType.name,
-      values: enumType.values.map(v => ({
+      values: enumType.values.map((v) => ({
         name: v.name,
-        dbName: v.dbName
-      }))
-    }))
-  };
+        dbName: v.dbName,
+      })),
+    })),
+  }
 
-  hash.update(JSON.stringify(schemaStructure));
-  return hash.digest('hex');
+  hash.update(JSON.stringify(schemaStructure))
+  return hash.digest("hex")
 }
 
-async function getCurrentVersion(outputDir: string, filename: string): Promise<{ version: number; hash: string | null }> {
+async function getCurrentVersion(
+  outputDir: string,
+  filename: string,
+): Promise<{ version: number; hash: string | null }> {
   try {
-    const content = await readFile(join(outputDir, filename), 'utf-8');
-    const versionMatch = content.match(/version:\s*(\d+)/);
-    const hashMatch = content.match(/Schema hash: ([a-f0-9]+)/);
-    
+    const content = await readFile(join(outputDir, filename), "utf-8")
+    const versionMatch = content.match(/version:\s*(\d+)/)
+    const hashMatch = content.match(/Schema hash: ([a-f0-9]+)/)
+
     return {
       version: versionMatch ? parseInt(versionMatch[1], 10) : 0,
-      hash: hashMatch ? hashMatch[1] : null
-    };
+      hash: hashMatch ? hashMatch[1] : null,
+    }
   } catch {
-    return { version: 0, hash: null };
+    return { version: 0, hash: null }
   }
 }
 
 // Export the onGenerate function separately
 export async function onGenerate(options: GeneratorOptions) {
-  const { generator, dmmf } = options;
-  const outputFile = "schema.ts";
-  const outputDir = generator.output?.value;
+  const { generator, dmmf } = options
+  const outputFile = "schema.ts"
+  const outputDir = generator.output?.value
 
-    if (!outputDir) {
-      throw new Error('Output directory is required');
-    }
-    
-    // Generate hash and get current version
-    const newHash = generateSchemaHash([...dmmf.datamodel.models], [...dmmf.datamodel.enums]);
-    const { version: currentVersion, hash: currentHash } = await getCurrentVersion(outputDir, outputFile);
-    const nextAutoincrementVersion = currentHash !== newHash ? currentVersion + 1 : currentVersion;
-    
-    if (generator.config.schemaVersion && isNaN(Number(generator.config.schemaVersion))) {
-      throw new Error("Schema version must be a number");
-    }
+  if (!outputDir) {
+    throw new Error("Output directory is required")
+  }
 
-    const config = {
-      name: generator.name,
-      prettier: generator.config.prettier === "true", // Default false,
-      resolvePrettierConfig: generator.config.resolvePrettierConfig !== "false", // Default true
-      schemaVersion: generator.config.schemaVersion
-        ? Number(generator.config.schemaVersion)
-        : nextAutoincrementVersion,
-    } satisfies Config;
-    
-    const enums = dmmf.datamodel.enums;
-    const models = dmmf.datamodel.models;
-    let output = `// Generated by Zero Schema Generator\n\n`;
-    output += 'import { createSchema, definePermissions, Row, column } from "@rocicorp/zero";\n\n';
-    output += "const { enumeration } = column;\n\n";
+  // Generate hash and get current version
+  const newHash = generateSchemaHash(
+    [...dmmf.datamodel.models],
+    [...dmmf.datamodel.enums],
+  )
+  const { version: currentVersion, hash: currentHash } =
+    await getCurrentVersion(outputDir, outputFile)
+  const nextAutoincrementVersion =
+    currentHash !== newHash ? currentVersion + 1 : currentVersion
 
-    if (enums.length > 0) {
-      output += "// Define enums\n\n";
-      // Generate enums
-      enums.forEach((enumType) => {
-        // Generate TypeScript enum
-        output += `export enum ${enumType.name} {\n`;
-        enumType.values.forEach((value) => {
-          // Handle mapped values
-          const enumValue = value.dbName || value.name;
-          output += `  ${value.name} = "${enumValue}",\n`;
-        });
-        output += "}\n\n";
-      });
-    }
+  if (
+    generator.config.schemaVersion &&
+    isNaN(Number(generator.config.schemaVersion))
+  ) {
+    throw new Error("Schema version must be a number")
+  }
 
-    if (models.length > 0) {
-      output += "// Define schemas\n\n";
-      // Generate schemas for models
-      models.forEach((model) => {
-        output += `const ${model.name}Schema = {\n`;
-        output += `  tableName: "${getTableName(model)}",\n`;
-        output += "  columns: {\n";
+  const config = {
+    name: generator.name,
+    prettier: generator.config.prettier === "true", // Default false,
+    resolvePrettierConfig: generator.config.resolvePrettierConfig !== "false", // Default true
+    schemaVersion: generator.config.schemaVersion
+      ? Number(generator.config.schemaVersion)
+      : nextAutoincrementVersion,
+  } satisfies Config
 
-        model.fields
-          .filter((field) => !field.relationName) // Skip relation fields
-          .forEach((field) => {
-            const fieldValue = mapPrismaTypeToZeroType(field);
-            output += `    ${fieldValue},\n`;
-          });
+  const enums = dmmf.datamodel.enums
+  const models = dmmf.datamodel.models
+  let output = `// Generated by Zero Schema Generator\n\n`
+  output +=
+    'import { createSchema, definePermissions, Row, table, string, boolean, number, json, enumeration, relationships } from "@rocicorp/zero";\n\n'
+  //   output += "const { enumeration } = column;\n\n"
 
-        output += "  },\n";
+  if (enums.length > 0) {
+    output += "// Define enums\n\n"
+    // Generate enums
+    enums.forEach((enumType) => {
+      // Generate TypeScript enum
+      output += `export enum ${enumType.name} {\n`
+      enumType.values.forEach((value) => {
+        // Handle mapped values
+        const enumValue = value.dbName || value.name
+        output += `  ${value.name} = "${enumValue}",\n`
+      })
+      output += "}\n\n"
+    })
+  }
 
-        // Add relationships if any exist
-        const relationships = generateRelationships(model, dmmf);
-        if (relationships) {
-          output += "  relationships: {\n";
-          output += relationships;
-          output += "\n  },\n";
-        }
-
-        // Add primary key
-        const primaryKey = model.primaryKey?.fields
-          ? model.primaryKey.fields
-          : model.fields.find((f) => f.isId)?.name;
-
-        if (!primaryKey) {
-          throw new Error(`No primary key found for ${model.name}`);
-        }
-
-        const primaryKeyString = JSON.stringify(primaryKey);
-
-        output += `  primaryKey: ${primaryKeyString},\n`;
-        output += "} as const;\n\n";
-      });
-    }
-
-    output += "// Define schema\n\n";
-    // Generate the main schema export
-    output += "export const schema = createSchema({\n";
-    output += `  version: ${config.schemaVersion},\n`;
-    output += "  tables: {\n";
+  if (models.length > 0) {
+    output += "// Define schemas\n\n"
+    // Generate schemas for models
     models.forEach((model) => {
-      output += `    ${getTableName(model)}: ${model.name}Schema,\n`;
-    });
-    output += "  },\n";
-    output += "});\n\n";
+      output += `const ${model.name}Schema = table("${getTableName(model)}")\n`
+      output += "  .columns({\n"
 
-    // Generate types
-    output += "// Define types\n";
-    output += "export type Schema = typeof schema;\n";
-    models.forEach((model) => {
-      output += `export type ${model.name} = Row<typeof ${model.name}Schema>;\n`;
-    });
+      model.fields
+        .filter((field) => !field.relationName) // Skip relation fields
+        .forEach((field) => {
+          const fieldValue = mapPrismaTypeToZeroType(field)
+          output += `    ${fieldValue},\n`
+        })
 
-    // Add permissions
-    output += "\n// Define permissions\n";
-    output +=
-      "\n// Important: currently no permissions are generated so evey operation is allowed!\n\n";
-    output += "\nexport const permissions = definePermissions(schema, () => ({}));\n\n";
+      output += "  })\n"
 
-    output += "// DO NOT TOUCH THIS. The schema hash is used to determine if the schema has changed and correctly update the version.\n";
-    output += "// Schema hash: " + newHash + "\n";
+      // Add primary key
+      const primaryKey = model.primaryKey?.fields
+        ? model.primaryKey.fields
+        : model.fields.find((f) => f.isId)?.name
 
-    if (config.prettier) {
-      let prettier: typeof import("prettier");
-      try {
-        prettier = await import("prettier");
-      } catch {
-        throw new Error("Unable import Prettier. Is it installed?");
+      if (!primaryKey) {
+        throw new Error(`No primary key found for ${model.name}`)
       }
 
-      const prettierOptions = config.resolvePrettierConfig
-        ? await prettier.resolveConfig(outputFile)
-        : null;
+      const primaryKeyString = JSON.stringify(primaryKey)
 
-      output = await prettier.format(output, { ...prettierOptions, parser: "typescript" });
+      output += `  .primaryKey(${primaryKeyString})\n\n`
+      //   output += "} as const;\n\n"
+    })
+
+    models.forEach((model) => {
+      // Add relationships if any exist
+      const relationships = generateRelationships(model, dmmf)
+      if (relationships) {
+        // output += "  relationships: {\n"
+        output += relationships
+        // output += "\n  },\n"
+      }
+    })
+    output += "\n\n"
+  }
+
+  output += "// Define schema\n\n"
+  // Generate the main schema export
+  output += "export const schema = createSchema(\n"
+  output += `  ${config.schemaVersion},\n`
+  output += "  {\n"
+  models.forEach((model) => {
+    output += `    ${getTableName(model)}: ${model.name}Schema,\n`
+  })
+  output += "  },\n"
+  output += "  {\n"
+  models.forEach((model) => {
+    output += `    ${model.name}Relationships,\n`
+  })
+  output += "  }\n"
+
+  output += ");\n\n"
+
+  // Generate types
+  output += "// Define types\n"
+  output += "export type Schema = typeof schema;\n"
+  output += "type TableName = keyof Schema['tables'];\n"
+
+  models.forEach((model) => {
+    // export type IssueRow = Row<typeof schema.tables.issue>;
+    output += `export type ${model.name} = Row<typeof schema.tables.${model.name}>;\n`
+  })
+
+  // Add permissions
+  output += "\n// Define permissions\n"
+  output +=
+    "\n// Important: currently no permissions are generated so evey operation is allowed!\n\n"
+  output +=
+    "\nexport const permissions = definePermissions(schema, () => ({}));\n\n"
+
+  output +=
+    "// DO NOT TOUCH THIS. The schema hash is used to determine if the schema has changed and correctly update the version.\n"
+  output += "// Schema hash: " + newHash + "\n"
+
+  if (config.prettier) {
+    // @ts-ignore
+    let prettier: typeof import("prettier")
+    try {
+      // @ts-ignore
+      prettier = await import("prettier")
+    } catch {
+      throw new Error("Unable import Prettier. Is it installed?")
     }
+
+    const prettierOptions = config.resolvePrettierConfig
+      ? await prettier.resolveConfig(outputFile)
+      : null
+
+    output = await prettier.format(output, {
+      ...prettierOptions,
+      parser: "typescript",
+    })
+  }
 
   // Ensure output directory exists
   if (outputDir) {
-    await mkdir(outputDir, { recursive: true });
+    await mkdir(outputDir, { recursive: true })
   }
 
   // Write the output to a file
   if (outputDir) {
-    await writeFile(join(outputDir, outputFile), output);
+    await writeFile(join(outputDir, outputFile), output)
   }
 }
 
@@ -285,7 +323,7 @@ generatorHandler({
       version,
       defaultOutput: "generated/zero",
       prettyName: "Zero Schema",
-    };
+    }
   },
-  onGenerate
-});
+  onGenerate,
+})
