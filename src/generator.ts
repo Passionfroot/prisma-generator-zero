@@ -82,11 +82,11 @@ function generateRelationships(model: DMMF.Model, dmmf: DMMF.Document) {
           ${relName}: ${field.isList ? "many" : "one"}({
           sourceField: ['${sourceField}'],
           destField: ['${destField}'],
-          destSchema: ${destModel}Schema,
+          destSchema: ${destModel},
       })`)
     })
 
-  let modelStringStart = ` const ${model.name}Relationships = relationships(${model.name}Schema,({${hasMany ? "many," : ""}${hasOne ? "one" : ""}})=>({`
+  let modelStringStart = ` const ${model.name}Relationships = relationships(${model.name},({${hasMany ? "many," : ""}${hasOne ? "one" : ""}})=>({`
   let modelStringEnd = `})) ` + `\n\n`
 
   return modelStringStart + relationships + modelStringEnd
@@ -215,7 +215,7 @@ export async function onGenerate(options: GeneratorOptions) {
   if (models.length > 0) {
     output += "// Define schemas\n\n"
     models.forEach((model) => {
-      output += `const ${model.name}Schema = table("${getTableName(model)}")\n`
+      output += `const ${model.name} = table("${model.name}")\n`
       output += "  .columns({\n"
 
       model.fields
@@ -258,16 +258,23 @@ export async function onGenerate(options: GeneratorOptions) {
   // Generate the main schema export
   output += "export const schema = createSchema(\n"
   output += `  ${config.schemaVersion},\n`
-  output += "  {\n"
+  output += "  {\n   "
+  output += "     tables: [\n"
   models.forEach((model) => {
-    output += `    ${getTableName(model)}: ${model.name}Schema,\n`
+    output += `    ${getTableName(model)},\n`
   })
-  output += "  },\n"
-  output += "  {\n"
+  output += "     ],\n"
+  output += "     relationships: [\n"
   models.forEach((model) => {
     output += `    ${model.name}Relationships,\n`
   })
+  output += "     ],\n"
   output += "  }\n"
+  // output += "  {\n"
+  // models.forEach((model) => {
+  //   output += `    ${model.name}Relationships,\n`
+  // })
+  // output += "  }\n"
 
   output += ");\n\n"
 
@@ -276,7 +283,7 @@ export async function onGenerate(options: GeneratorOptions) {
   output += "export type Schema = typeof schema;\n"
 
   models.forEach((model) => {
-    output += `export type ${model.name} = Row<typeof schema.tables.${model.name}>;\n`
+    output += `export type ${model.name}Schema = Row<typeof schema.tables.${model.name}>;\n`
   })
 
   // Add permissions
