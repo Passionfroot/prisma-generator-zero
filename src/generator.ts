@@ -43,19 +43,24 @@ function mapPrismaTypeToZeroType(field: DMMF.Field): string {
   return output
 }
 
+/**
+ *
+ * @param {@link DMMF.Model} model
+ * @param {@link DMMF.Document} dmmf
+ * @returns
+ */
+
 function generateRelationships(model: DMMF.Model, dmmf: DMMF.Document) {
   const relationships: string[] = []
-  let hasMany = false
-  let hasOne = false
+  let isMany = false
+  let isOne = false
   model.fields
     .filter((field) => field.relationName)
     .forEach((field) => {
       const relName = field.name
       let sourceField: string
       let destField: string
-      if (field.name === "Comps") {
-        console.log(field)
-      }
+
       if (field.isList) {
         // For "many" side relationships, we need to find the matching field in the target model
         // that references back to this model
@@ -63,17 +68,20 @@ function generateRelationships(model: DMMF.Model, dmmf: DMMF.Document) {
           (m) => m.name === field.type,
         )
 
+        // many to many won't have relationFromFields or relationToFields
+        // as well as making a relationship chain, a table needs to be added
         const backReference = targetModel?.fields.find(
           (f) => f.relationName === field.relationName && f.type === model.name,
         )
+
         sourceField = "id"
         destField = backReference?.relationFromFields?.[0] || "id"
-        hasMany = true
+        isMany = true
       } else {
         // For "one" side relationships, use the foreign key
         sourceField = field.relationFromFields?.[0] || "id"
         destField = field.relationToFields?.[0] || "id"
-        hasOne = true
+        isOne = true
       }
 
       const destModel = field.type
@@ -86,7 +94,7 @@ function generateRelationships(model: DMMF.Model, dmmf: DMMF.Document) {
       })`)
     })
 
-  let modelStringStart = ` const ${model.name}Relationships = relationships(${model.name},({${hasMany ? "many," : ""}${hasOne ? "one" : ""}})=>({`
+  let modelStringStart = ` const ${model.name}Relationships = relationships(${model.name},({${isMany ? "many," : ""}${isOne ? "one" : ""}})=>({`
   let modelStringEnd = `})) ` + `\n\n`
 
   return modelStringStart + relationships + modelStringEnd
@@ -237,45 +245,35 @@ export async function onGenerate(options: GeneratorOptions) {
       }
 
       const primaryKeyString = JSON.stringify(primaryKey)
-
       output += `  .primaryKey(${primaryKeyString})\n\n`
-      //   output += "} as const;\n\n"
     })
 
     models.forEach((model) => {
       // Add relationships if any exist
       const relationships = generateRelationships(model, dmmf)
       if (relationships) {
-        // output += "  relationships: {\n"
         output += relationships
-        // output += "\n  },\n"
       }
     })
     output += "\n\n"
   }
 
-  output += "// Define schema\n\n"
   // Generate the main schema export
+  output += "// Define schema\n"
   output += "export const schema = createSchema(\n"
   output += `  ${config.schemaVersion},\n`
   output += "  {\n   "
-  output += "     tables: [\n"
+  output += " tables: [\n"
   models.forEach((model) => {
-    output += `    ${getTableName(model)},\n`
+    output += `       ${model.name},\n`
   })
-  output += "     ],\n"
-  output += "     relationships: [\n"
+  output += "   ],\n"
+  output += "   relationships: [\n"
   models.forEach((model) => {
-    output += `    ${model.name}Relationships,\n`
+    output += `       ${model.name}Relationships,\n`
   })
-  output += "     ],\n"
+  output += "    ],\n"
   output += "  }\n"
-  // output += "  {\n"
-  // models.forEach((model) => {
-  //   output += `    ${model.name}Relationships,\n`
-  // })
-  // output += "  }\n"
-
   output += ");\n\n"
 
   // Generate types

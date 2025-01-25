@@ -2,7 +2,7 @@
   "include": ["src/**/*"],
   "exclude": ["**/node_modules", "**/__tests__"],
   "compilerOptions": {
-    "target": "ES2019",
+    "target": "ESNext",
     "module": "commonjs",
     "lib": ["esnext"],
     "strict": true,
