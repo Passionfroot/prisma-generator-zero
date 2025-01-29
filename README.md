@@ -2,10 +2,6 @@
 
 `prisma-generator-zero` is a generator for [prisma](https://www.prisma.io) that generates a [Zero](https://zero.rocicorp.dev/) schema from your Prisma schema. This includes schemas of models, enums, and relationships.
 
-## Known issues and Limitations
-
-> - The generator doesn't currently handle [permissions](https://zero.rocicorp.dev/docs/permissions), so the generated schema will default to allow any read/write operation. We'd love to add better support for this in the future and welcome contributions!
-
 ## Installation
 
 ```bash
@@ -27,6 +23,26 @@ Then run the following command to generate the `schema.ts` file in the `./genera
 ```sh
 npx prisma generate
 ```
+
+Now import the generated schema into your `schema` file and define your own permissions.
+
+```ts
+import { definePermissions } from "@rocicorp/zero";
+
+import { schema as generatedSchema, Schema } from "./prisma/generated/zero/schema";
+
+// The contents of your decoded JWT.
+type AuthData = {
+  sub: string | null;
+};
+
+export const schema = generatedSchema;
+export const permissions = definePermissions<ClerkAuthData, Schema>(generatedSchema, () => ({
+  // Add your logic here
+}));
+
+```
+> For more information on `definePermissions` see the [official docs](https://zero.rocicorp.dev/docs/permissions)
 
 You can directly use the generated schema as explained [here](https://zero.rocicorp.dev/docs/zero-schema#building-the-zero-schema) and/or reference specific exports anywhere else in your code.
 

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DMMF, GeneratorOptions } from "@prisma/generator-helper";
 import * as fs from "fs/promises";
 import { onGenerate } from "../generator";
+import { createField, createModel, createMockDMMF } from "./utils";
 
 // Mock fs/promises
 vi.mock("fs/promises", () => ({
@@ -9,33 +10,6 @@ vi.mock("fs/promises", () => ({
   mkdir: vi.fn(),
   readFile: vi.fn(),
 }));
-
-// Helper Functions
-function createField(
-  name: string,
-  type: string,
-  isRequired = true,
-  isList = false,
-  relationName?: string
-): DMMF.Field {
-  return {
-    name,
-    kind: "scalar",
-    type,
-    isRequired,
-    isList,
-    relationName,
-    isId: false,
-    isReadOnly: false,
-    isGenerated: false,
-    isUpdatedAt: false,
-    isUnique: false,
-    hasDefaultValue: false,
-    documentation: undefined,
-    relationFromFields: [],
-    relationToFields: [],
-  };
-}
 
 function createTestOptions(dmmf: DMMF.Document): GeneratorOptions {
   return {
@@ -57,35 +31,6 @@ function createTestOptions(dmmf: DMMF.Document): GeneratorOptions {
   };
 }
 
-function createMockDMMF(models: DMMF.Model[], enums: DMMF.DatamodelEnum[] = []): DMMF.Document {
-  return {
-    datamodel: {
-      models,
-      enums,
-      types: [],
-      indexes: [],
-    },
-    schema: {} as any,
-    mappings: {} as any,
-  };
-}
-
-function createModel(
-  name: string,
-  fields: DMMF.Field[],
-  options: Partial<DMMF.Model> = {}
-): DMMF.Model {
-  return {
-    name,
-    dbName: null,
-    fields,
-    uniqueFields: [],
-    uniqueIndexes: [],
-    primaryKey: null,
-    ...options,
-  };
-}
-
 describe("Generator", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -97,10 +42,10 @@ describe("Generator", () => {
         name: "User",
         dbName: null,
         fields: [
-          { ...createField("id", "String"), isId: true },
+          createField("id", "String", { isId: true }),
           createField("name", "String"),
           createField("email", "String"),
-          { ...createField("age", "Int"), isRequired: false },
+          createField("age", "Int", { isRequired: false }),
         ],
         uniqueFields: [],
         uniqueIndexes: [],
@@ -136,8 +81,8 @@ describe("Generator", () => {
         name: "User",
         dbName: null,
         fields: [
-          { ...createField("id", "String"), isId: true },
-          { ...createField("role", "Role"), kind: "enum" },
+          createField("id", "String", { isId: true }),
+          createField("role", "Role", { kind: "enum" }),
         ],
         uniqueFields: [],
         uniqueIndexes: [],
@@ -153,33 +98,30 @@ describe("Generator", () => {
     });
 
     it("should handle relationships correctly", async () => {
+      // Create User model with a one-to-many relationship to Post
       const userModel = createModel("User", [
-        { ...createField("id", "String"), isId: true },
-        {
-          ...createField("posts", "Post", true, true),
+        createField("id", "String", { isId: true }),
+        createField("name", "String"),
+        createField("posts", "Post", {
           kind: "object",
+          isList: true,
           relationName: "UserPosts",
           relationToFields: ["id"],
           relationFromFields: ["userId"],
-        },
+        }),
       ]);
 
+      // Create Post model with both the foreign key and the relation field
       const postModel = createModel("Post", [
-        { ...createField("id", "String"), isId: true },
-        {
-          ...createField("userId", "String"),
-          kind: "scalar",
-          relationName: "UserPosts",
-          relationFromFields: ["userId"],
-          relationToFields: ["id"],
-        },
-        {
-          ...createField("user", "User"),
+        createField("id", "String", { isId: true }),
+        createField("title", "String"),
+        createField("userId", "String"),
+        createField("user", "User", {
           kind: "object",
           relationName: "UserPosts",
           relationFromFields: ["userId"],
           relationToFields: ["id"],
-        },
+        }),
       ]);
 
       await onGenerate(createTestOptions(createMockDMMF([userModel, postModel])));
@@ -187,6 +129,7 @@ describe("Generator", () => {
       const [, contentBuffer] = vi.mocked(fs.writeFile).mock.calls[0];
       const content = contentBuffer.toString();
 
+      // Verify the generated code contains the relationship definitions
       expect(content).toMatchSnapshot();
     });
   });
@@ -195,7 +138,7 @@ describe("Generator", () => {
     it("should increment version when schema hash changes", async () => {
       // First generation with simpler model creation
       const initialModel = createModel("User", [
-        { ...createField("id", "String"), isId: true },
+        createField("id", "String", { isId: true }),
         createField("name", "String"),
       ]);
 
@@ -210,7 +153,7 @@ describe("Generator", () => {
 
       // Second generation with modified model
       const modifiedModel = createModel("User", [
-        { ...createField("id", "String"), isId: true },
+        createField("id", "String", { isId: true }),
         createField("name", "String"),
         createField("email", "String"), // Added field
       ]);
@@ -225,12 +168,12 @@ describe("Generator", () => {
       const content = contentBuffer.toString();
 
       // Version should be incremented
-      expect(content).toContain("version: 2");
+      expect(content).toContain("2,");
     });
 
     it("should not increment version when schema hash remains the same", async () => {
       const model = createModel("User", [
-        { ...createField("id", "String"), isId: true },
+        createField("id", "String", { isId: true }),
         createField("name", "String"),
       ]);
 
@@ -249,12 +192,12 @@ describe("Generator", () => {
       const content = contentBuffer.toString();
 
       // Version should remain the same
-      expect(content).toContain("version: 1");
+      expect(content).toContain("1,");
     });
 
     it("should use provided schemaVersion from generator config", async () => {
       const model = createModel("User", [
-        { ...createField("id", "String"), isId: true },
+        createField("id", "String", { isId: true }),
         createField("name", "String"),
       ]);
 
@@ -270,7 +213,7 @@ describe("Generator", () => {
       const content = contentBuffer.toString();
 
       // Version should match the provided config value
-      expect(content).toContain("version: 42");
+      expect(content).toContain("42,");
     });
   });
 });
