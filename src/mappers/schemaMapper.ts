@@ -20,7 +20,10 @@ function ensureStringArray(arr: (string | undefined)[] | readonly string[]): str
   return Array.from(arr).filter((item): item is string => item !== undefined);
 }
 
-function mapRelationships(model: DMMF.Model, dmmf: DMMF.Document): Record<string, ZeroRelationship> | undefined {
+function mapRelationships(
+  model: DMMF.Model,
+  dmmf: DMMF.Document
+): Record<string, ZeroRelationship> | undefined {
   const relationships: Record<string, ZeroRelationship> = {};
 
   model.fields
@@ -39,15 +42,15 @@ function mapRelationships(model: DMMF.Model, dmmf: DMMF.Document): Record<string
         // For "many" side relationships
         const idField = model.fields.find((f) => f.isId)?.name;
         const sourceFields = idField ? [idField] : [];
-        const destFields = backReference?.relationFromFields ? 
-          ensureStringArray(backReference.relationFromFields) : 
-          [];
+        const destFields = backReference?.relationFromFields
+          ? ensureStringArray(backReference.relationFromFields)
+          : [];
 
         relationships[field.name] = {
           sourceField: sourceFields,
           destField: destFields,
           destSchema: getZeroTableName(targetModel.name),
-          type: 'many'
+          type: "many",
         };
       } else {
         // For "one" side relationships
@@ -56,13 +59,11 @@ function mapRelationships(model: DMMF.Model, dmmf: DMMF.Document): Record<string
 
         if (field.relationFromFields?.length) {
           sourceFields = ensureStringArray(field.relationFromFields);
-          destFields = field.relationToFields ? 
-            ensureStringArray(field.relationToFields) : 
-            [];
+          destFields = field.relationToFields ? ensureStringArray(field.relationToFields) : [];
         } else if (backReference?.relationFromFields?.length) {
-          sourceFields = backReference.relationToFields ? 
-            ensureStringArray(backReference.relationToFields) : 
-            [];
+          sourceFields = backReference.relationToFields
+            ? ensureStringArray(backReference.relationToFields)
+            : [];
           destFields = ensureStringArray(backReference.relationFromFields);
         }
 
@@ -70,7 +71,7 @@ function mapRelationships(model: DMMF.Model, dmmf: DMMF.Document): Record<string
           sourceField: sourceFields,
           destField: destFields,
           destSchema: getZeroTableName(targetModel.name),
-          type: 'one'
+          type: "one",
         };
       }
     });
@@ -80,7 +81,7 @@ function mapRelationships(model: DMMF.Model, dmmf: DMMF.Document): Record<string
 
 function mapModel(model: DMMF.Model, dmmf: DMMF.Document): ZeroModel {
   const columns: Record<string, ReturnType<typeof mapPrismaTypeToZero>> = {};
-  
+
   model.fields
     .filter((field) => !field.relationName)
     .forEach((field) => {
@@ -93,30 +94,24 @@ function mapModel(model: DMMF.Model, dmmf: DMMF.Document): ZeroModel {
     throw new Error(`No primary key found for ${model.name}`);
   }
 
-  // console.log("model.dbname", model);
-  // console.log("getTableName", getTableName(model));
-
   return {
     tableName: getTableName(model),
     modelName: model.name,
     zeroTableName: getZeroTableName(model.name),
     columns,
     relationships: mapRelationships(model, dmmf),
-    primaryKey: ensureStringArray(primaryKey)
+    primaryKey: ensureStringArray(primaryKey),
   };
 }
 
-export function transformSchema(
-  dmmf: DMMF.Document,
-  currentVersion: number
-): TransformedSchema {
-  const models = dmmf.datamodel.models.map(model => mapModel(model, dmmf));
+export function transformSchema(dmmf: DMMF.Document, currentVersion: number): TransformedSchema {
+  const models = dmmf.datamodel.models.map((model) => mapModel(model, dmmf));
   const hash = generateSchemaHash([...dmmf.datamodel.models], [...dmmf.datamodel.enums]);
 
   return {
     models,
     enums: [...dmmf.datamodel.enums],
     version: currentVersion,
-    hash
+    hash,
   };
-} 
+}

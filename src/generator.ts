@@ -26,7 +26,10 @@ export async function onGenerate(options: GeneratorOptions) {
   } satisfies Config;
 
   // Get current version and hash
-  const { version: currentVersion, hash: currentHash } = await getCurrentVersion(outputDir, outputFile);
+  const { version: currentVersion, hash: currentHash } = await getCurrentVersion(
+    outputDir,
+    outputFile
+  );
 
   // Transform the schema
   const transformedSchema = transformSchema(dmmf, currentVersion);

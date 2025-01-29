@@ -8,7 +8,11 @@ export async function getCurrentVersion(
 ): Promise<SchemaVersion> {
   try {
     const content = await readFile(join(outputDir, filename), "utf-8");
-    const versionMatch = content.match(/version:\s*(\d+)/);
+    // Try to match both formats:
+    // 1. Old format: version: 1
+    // 2. New format: createSchema(1, {
+    const versionMatch =
+      content.match(/version:\s*(\d+)/) || content.match(/createSchema\(\s*(\d+)/);
     const hashMatch = content.match(/Schema hash: ([a-f0-9]+)/);
 
     return {

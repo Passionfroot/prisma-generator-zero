@@ -16,13 +16,13 @@ export function mapPrismaTypeToZero(field: DMMF.Field): ZeroTypeMapping {
   if (field.kind === "enum") {
     return {
       type: `enumeration<${field.type}>()`,
-      isOptional: !field.isRequired
+      isOptional: !field.isRequired,
     };
   }
 
   const baseType = TYPE_MAP[field.type] || "string()";
   return {
     type: baseType,
-    isOptional: !field.isRequired
+    isOptional: !field.isRequired,
   };
-} 
+}

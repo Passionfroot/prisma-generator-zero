@@ -21,7 +21,7 @@ export type ZeroRelationship = {
   sourceField: string[];
   destField: string[];
   destSchema: string;
-  type: 'one' | 'many';
+  type: "one" | "many";
 };
 
 export type ZeroModel = {
@@ -38,4 +38,4 @@ export type TransformedSchema = {
   enums: DMMF.DatamodelEnum[];
   version: number;
   hash: string;
-}; 
+};
