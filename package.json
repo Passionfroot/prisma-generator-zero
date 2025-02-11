@@ -28,7 +28,8 @@
   },
   "homepage": "https://github.com/Passionfroot/prisma-generator-zero#readme",
   "dependencies": {
-    "@prisma/generator-helper": "^5.20.0"
+    "@prisma/generator-helper": "^5.20.0",
+    "change-case": "^5.4.4"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

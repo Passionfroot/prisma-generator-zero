@@ -57,5 +57,8 @@ generator zero {
   // By default, the generator will keep track of changes to the schema and automatically bump the version.
   // You can opt-out from this behavior by setting `schemaVersion`.
   schemaVersion = 10
+  // When true, the generator will remap table names to camel case using Zero's `.from()` method.
+  // You can read more about it here https://zero.rocicorp.dev/docs/zero-schema#name-mapping
+  remapTablesToCamelCase = true
 }
 ```
