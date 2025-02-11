@@ -1,5 +1,5 @@
-import { DMMF } from "@prisma/generator-helper";
-import { TransformedSchema, ZeroModel, ZeroTypeMapping } from "../types";
+import type { DMMF } from "@prisma/generator-helper";
+import { TransformedSchema, ZeroModel, ZeroTypeMapping, ZeroRelationship, ZeroRelationshipLink } from "../types";
 
 function generateImports(): string {
   return `import {
@@ -51,35 +51,55 @@ function generateModelSchema(model: ZeroModel): string {
   return output;
 }
 
-function generateRelationships(models: ZeroModel[]): string {
-  const modelRelationships = models
-    .filter((model) => model.relationships && Object.keys(model.relationships).length > 0)
-    .map((model) => {
-      const relationshipEntries = Object.entries(model.relationships || {});
-      const hasOneRelation = relationshipEntries.some(([, rel]) => rel.type === "one");
-      const hasManyRelation = relationshipEntries.some(([, rel]) => rel.type === "many");
-
-      const relationshipImports = [];
-      if (hasOneRelation) relationshipImports.push("one");
-      if (hasManyRelation) relationshipImports.push("many");
-
-      const relationshipsStr = relationshipEntries
-        .map(([name, rel]) => {
-          return `  ${name}: ${rel.type}({
+function generateRelationshipConfig(rel: ZeroRelationship): string {
+  if ('chain' in rel) {
+    // Handle chained relationship by passing each link as a separate argument
+    return rel.chain
+      .map((link: ZeroRelationshipLink) => `{
+    sourceField: ${JSON.stringify(link.sourceField)},
+    destField: ${JSON.stringify(link.destField)},
+    destSchema: ${link.destSchema},
+  }`)
+      .join(', ');
+  } else {
+    // Handle direct relationship
+    return `{
     sourceField: ${JSON.stringify(rel.sourceField)},
     destField: ${JSON.stringify(rel.destField)},
     destSchema: ${rel.destSchema},
-  })`;
-        })
-        .join(",\n");
+  }`;
+  }
+}
 
-      return `export const ${model.zeroTableName}Relationships = relationships(${model.zeroTableName}, ({ ${relationshipImports.join(", ")} }) => ({
+function generateRelationships(models: ZeroModel[]): string {
+  const modelRelationships = models.map((model) => {
+    if (!model.relationships) return "";
+
+    const relationshipEntries = Object.entries(model.relationships);
+    if (relationshipEntries.length === 0) return "";
+
+    const hasOneRelation = relationshipEntries.some(([, rel]) => rel.type === "one");
+    const hasManyRelation = relationshipEntries.some(([, rel]) => rel.type === "many");
+
+    const relationshipImports = [];
+    if (hasOneRelation) relationshipImports.push("one");
+    if (hasManyRelation) relationshipImports.push("many");
+
+    const relationshipsStr = relationshipEntries
+      .map(([name, rel]) => {
+        const configStr = generateRelationshipConfig(rel);
+        return `  ${name}: ${rel.type}(${configStr})`;
+      })
+      .join(",\n");
+
+    return `export const ${model.zeroTableName}Relationships = relationships(${model.zeroTableName}, ({ ${relationshipImports.join(", ")} }) => ({
 ${relationshipsStr}
 }));\n\n`;
-    });
+  });
 
-  return modelRelationships.length > 0
-    ? "\n// Define relationships\n\n" + modelRelationships.join("\n")
+  const filteredRelationships = modelRelationships.filter(Boolean);
+  return filteredRelationships.length > 0
+    ? "\n// Define relationships\n\n" + filteredRelationships.join("")
     : "";
 }
 

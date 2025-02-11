@@ -216,4 +216,82 @@ describe("Generator", () => {
       expect(content).toContain("42,");
     });
   });
+
+  describe("Many-to-Many Relationships", () => {
+    it("should generate correct schema for implicit many-to-many relationship", async () => {
+      // Create Post model with categories relationship
+      const postModel = createModel("Post", [
+        createField("id", "Int", { isId: true }),
+        createField("title", "String"),
+        createField("categories", "Category", { 
+          isList: true,
+          // relationName: "PostToCategory",
+          kind: "object"
+        }),
+      ]);
+
+      // Create Category model with posts relationship
+      const categoryModel = createModel("Category", [
+        createField("id", "Int", { isId: true }),
+        createField("name", "String"),
+        createField("posts", "Post", { 
+          isList: true,
+          // relationName: "PostToCategory",
+          kind: "object"
+        }),
+      ]);
+
+      const dmmf = createMockDMMF([postModel, categoryModel]);
+      const options = createTestOptions(dmmf);
+
+      // Mock readFile to return null (no existing schema)
+      vi.mocked(fs.readFile).mockRejectedValue(new Error("File not found"));
+
+      await onGenerate(options);
+
+      // Get the generated code
+      const writeFileCall = vi.mocked(fs.writeFile).mock.calls[0];
+      const generatedCode = writeFileCall[1] as string;
+
+      expect(generatedCode).toMatchSnapshot();
+    });
+
+    it("should use custom relation name for implicit many-to-many table", async () => {
+      // Create Post model with categories relationship using custom relation name
+      const postModel = createModel("Post", [
+        createField("id", "Int", { isId: true }),
+        createField("title", "String"),
+        createField("categories", "Category", { 
+          isList: true,
+          relationName: "MyCustomRelation",
+          kind: "object"
+        }),
+      ]);
+
+      // Create Category model with posts relationship
+      const categoryModel = createModel("Category", [
+        createField("id", "Int", { isId: true }),
+        createField("name", "String"),
+        createField("posts", "Post", { 
+          isList: true,
+          relationName: "MyCustomRelation",
+          kind: "object"
+        }),
+      ]);
+
+      const dmmf = createMockDMMF([postModel, categoryModel]);
+      const options = createTestOptions(dmmf);
+
+      // Mock readFile to return null (no existing schema)
+      vi.mocked(fs.readFile).mockRejectedValue(new Error("File not found"));
+
+      await onGenerate(options);
+
+      // Get the generated code
+      const writeFileCall = vi.mocked(fs.writeFile).mock.calls[0];
+      const generatedCode = writeFileCall[1] as string;
+
+      expect(generatedCode).toMatchSnapshot();
+    });
+  });
 });
