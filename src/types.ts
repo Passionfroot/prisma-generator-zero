@@ -17,12 +17,24 @@ export type ZeroTypeMapping = {
   isOptional?: boolean;
 };
 
-export type ZeroRelationship = {
+export type ZeroRelationshipLink = {
   sourceField: string[];
   destField: string[];
   destSchema: string;
-  type: "one" | "many";
 };
+
+export type ZeroRelationship = {
+  type: "one" | "many";
+} & (
+  | {
+      sourceField: string[];
+      destField: string[];
+      destSchema: string;
+    }
+  | {
+      chain: ZeroRelationshipLink[];
+    }
+);
 
 export type ZeroModel = {
   tableName: string;
