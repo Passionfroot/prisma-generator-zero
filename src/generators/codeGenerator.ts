@@ -1,5 +1,10 @@
-import type { DMMF } from "@prisma/generator-helper";
-import { TransformedSchema, ZeroModel, ZeroTypeMapping, ZeroRelationship, ZeroRelationshipLink } from "../types";
+import {
+  TransformedSchema,
+  ZeroModel,
+  ZeroTypeMapping,
+  ZeroRelationship,
+  ZeroRelationshipLink,
+} from "../types";
 
 function generateImports(): string {
   return `import {
@@ -11,7 +16,7 @@ function generateImports(): string {
   enumeration,
   relationships,
   createSchema,
-  Row,
+  type Row,
 } from "@rocicorp/zero";\n\n`;
 }
 
@@ -52,15 +57,17 @@ function generateModelSchema(model: ZeroModel): string {
 }
 
 function generateRelationshipConfig(rel: ZeroRelationship): string {
-  if ('chain' in rel) {
+  if ("chain" in rel) {
     // Handle chained relationship by passing each link as a separate argument
     return rel.chain
-      .map((link: ZeroRelationshipLink) => `{
+      .map(
+        (link: ZeroRelationshipLink) => `{
     sourceField: ${JSON.stringify(link.sourceField)},
     destField: ${JSON.stringify(link.destField)},
     destSchema: ${link.destSchema},
-  }`)
-      .join(', ');
+  }`
+      )
+      .join(", ");
   } else {
     // Handle direct relationship
     return `{

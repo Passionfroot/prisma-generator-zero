@@ -126,4 +126,4 @@ describe("Version Utilities", () => {
       expect(result).toBe(1);
     });
   });
-}); 
+});

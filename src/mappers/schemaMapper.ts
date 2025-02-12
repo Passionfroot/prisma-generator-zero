@@ -20,7 +20,11 @@ function ensureStringArray(arr: (string | undefined)[] | readonly string[]): str
   return Array.from(arr).filter((item): item is string => item !== undefined);
 }
 
-function getImplicitManyToManyTableName(model1: string, model2: string, relationName?: string): string {
+function getImplicitManyToManyTableName(
+  model1: string,
+  model2: string,
+  relationName?: string
+): string {
   if (relationName) {
     return `_${relationName}`;
   }
@@ -35,7 +39,7 @@ function createImplicitManyToManyModel(
 ): ZeroModel {
   const tableName = getImplicitManyToManyTableName(model1.name, model2.name, relationName);
   const [modelA, modelB] = [model1, model2].sort((a, b) => a.name.localeCompare(b.name));
-  
+
   return {
     tableName,
     modelName: tableName,
@@ -53,13 +57,17 @@ function createImplicitManyToManyModel(
     relationships: {
       modelA: {
         sourceField: ["A"],
-        destField: modelA.fields.find((f) => f.isId)?.name ? [modelA.fields.find((f) => f.isId)!.name] : [],
+        destField: modelA.fields.find((f) => f.isId)?.name
+          ? [modelA.fields.find((f) => f.isId)!.name]
+          : [],
         destSchema: getZeroTableName(modelA.name),
         type: "one",
       },
       modelB: {
         sourceField: ["B"],
-        destField: modelB.fields.find((f) => f.isId)?.name ? [modelB.fields.find((f) => f.isId)!.name] : [],
+        destField: modelB.fields.find((f) => f.isId)?.name
+          ? [modelB.fields.find((f) => f.isId)!.name]
+          : [],
         destSchema: getZeroTableName(modelB.name),
         type: "one",
       },
@@ -90,7 +98,11 @@ function mapRelationships(
         // For "many" side relationships
         if (backReference?.isList) {
           // This is a many-to-many relationship
-          const joinTableName = getImplicitManyToManyTableName(model.name, targetModel.name, field.relationName);
+          const joinTableName = getImplicitManyToManyTableName(
+            model.name,
+            targetModel.name,
+            field.relationName
+          );
           const [modelA] = [model, targetModel].sort((a, b) => a.name.localeCompare(b.name));
           const isModelA = model.name === modelA.name;
 
@@ -107,8 +119,8 @@ function mapRelationships(
                 sourceField: [isModelA ? "B" : "A"],
                 destField: [targetModel.fields.find((f) => f.isId)?.name || "id"],
                 destSchema: getZeroTableName(targetModel.name),
-              }
-            ]
+              },
+            ],
           };
         } else {
           // Regular one-to-many relationship
@@ -179,7 +191,7 @@ function mapModel(model: DMMF.Model, dmmf: DMMF.Document): ZeroModel {
 
 export function transformSchema(dmmf: DMMF.Document, currentVersion: number): TransformedSchema {
   const models = dmmf.datamodel.models.map((model) => mapModel(model, dmmf));
-  
+
   // Add implicit many-to-many join tables
   const implicitJoinTables = dmmf.datamodel.models.flatMap((model) => {
     return model.fields
@@ -187,11 +199,11 @@ export function transformSchema(dmmf: DMMF.Document, currentVersion: number): Tr
       .map((field) => {
         const targetModel = dmmf.datamodel.models.find((m) => m.name === field.type);
         if (!targetModel) return null;
-        
+
         const backReference = targetModel.fields.find(
           (f) => f.relationName === field.relationName && f.type === model.name
         );
-        
+
         if (backReference?.isList) {
           // Only create the join table once for each relationship
           if (model.name.localeCompare(targetModel.name) < 0) {
