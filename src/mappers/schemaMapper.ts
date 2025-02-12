@@ -4,17 +4,17 @@ import { mapPrismaTypeToZero } from "./typeMapper";
 import { generateSchemaHash } from "../utils/hash";
 import { camelCase } from "change-case";
 
-function getTableName(model: DMMF.Model): string {
+function getTableNameFromModel(model: DMMF.Model): string {
   return model.dbName || model.name;
 }
 
-/** Convert model name to camel case
- * Eg. IssueLabel -> issueLabel
+/**
+ * Get the zero table name from a model name
+ * Eg. IssueLabel -> issueLabelTable
  */
-function getZeroTableName(str: string): string {
-  const firstChar = str.charAt(0);
-  const rest = str.slice(1);
-  return firstChar.toLowerCase() + rest + "Table";
+function getZeroTableName(str: string, config?: Config): string {
+  const tableName = getTableName(str, config);
+  return tableName + "Table";
 }
 
 function ensureStringArray(arr: (string | undefined)[] | readonly string[]): string[] {
@@ -39,9 +39,21 @@ function getImplicitManyToManyTableName(
  */
 function toCamelCase(str: string): string {
   const prefixMatch = str.match(/^_+/);
-  const prefix = prefixMatch ? prefixMatch[0] : '';
+  const prefix = prefixMatch ? prefixMatch[0] : "";
   const rest = str.slice(prefix.length);
   return prefix + camelCase(rest);
+}
+
+/**
+ * Get the table name from a model name
+ * If remapTablesToCamelCase is true, convert the table name to camel case
+ * Eg. issueLabel -> issueLabel
+ */
+function getTableName(tableName: string, config?: Config): string {
+  if (config?.remapTablesToCamelCase) {
+    return toCamelCase(tableName);
+  }
+  return tableName;
 }
 
 function createImplicitManyToManyModel(
@@ -50,19 +62,16 @@ function createImplicitManyToManyModel(
   relationName?: string,
   config?: Config
 ): ZeroModel {
-  const tableName = getImplicitManyToManyTableName(model1.name, model2.name, relationName);
+  const originalTableName = getImplicitManyToManyTableName(model1.name, model2.name, relationName);
   const [modelA, modelB] = [model1, model2].sort((a, b) => a.name.localeCompare(b.name));
-  
-  // Apply camel case transformation if config is provided and remapTablesToCamelCase is true
-  const camelCasedName = config?.remapTablesToCamelCase ? toCamelCase(tableName) : tableName;
-  
-  const shouldRemap = config?.remapTablesToCamelCase && camelCasedName !== tableName;
-  
+
+  const tableName = getTableName(originalTableName, config);
+
   return {
-    tableName: shouldRemap ? camelCasedName : tableName,
-    originalTableName: shouldRemap ? tableName : undefined,
-    modelName: tableName,
-    zeroTableName: getZeroTableName(tableName),
+    tableName,
+    originalTableName,
+    modelName: originalTableName,
+    zeroTableName: getZeroTableName(originalTableName, config),
     columns: {
       A: {
         type: "string()",
@@ -79,7 +88,7 @@ function createImplicitManyToManyModel(
         destField: modelA.fields.find((f) => f.isId)?.name
           ? [modelA.fields.find((f) => f.isId)!.name]
           : [],
-        destSchema: getZeroTableName(modelA.name),
+        destSchema: getZeroTableName(modelA.name, config),
         type: "one",
       },
       modelB: {
@@ -87,7 +96,7 @@ function createImplicitManyToManyModel(
         destField: modelB.fields.find((f) => f.isId)?.name
           ? [modelB.fields.find((f) => f.isId)!.name]
           : [],
-        destSchema: getZeroTableName(modelB.name),
+        destSchema: getZeroTableName(modelB.name, config),
         type: "one",
       },
     },
@@ -97,7 +106,8 @@ function createImplicitManyToManyModel(
 
 function mapRelationships(
   model: DMMF.Model,
-  dmmf: DMMF.Document
+  dmmf: DMMF.Document,
+  config?: Config
 ): Record<string, ZeroRelationship> | undefined {
   const relationships: Record<string, ZeroRelationship> = {};
 
@@ -132,12 +142,12 @@ function mapRelationships(
               {
                 sourceField: [model.fields.find((f) => f.isId)?.name || "id"],
                 destField: [isModelA ? "A" : "B"],
-                destSchema: getZeroTableName(joinTableName),
+                destSchema: getZeroTableName(joinTableName, config),
               },
               {
                 sourceField: [isModelA ? "B" : "A"],
                 destField: [targetModel.fields.find((f) => f.isId)?.name || "id"],
-                destSchema: getZeroTableName(targetModel.name),
+                destSchema: getZeroTableName(targetModel.name, config),
               },
             ],
           };
@@ -152,7 +162,7 @@ function mapRelationships(
           relationships[field.name] = {
             sourceField: sourceFields,
             destField: destFields,
-            destSchema: getZeroTableName(targetModel.name),
+            destSchema: getZeroTableName(targetModel.name, config),
             type: "many",
           };
         }
@@ -174,7 +184,7 @@ function mapRelationships(
         relationships[field.name] = {
           sourceField: sourceFields,
           destField: destFields,
-          destSchema: getZeroTableName(targetModel.name),
+          destSchema: getZeroTableName(targetModel.name, config),
           type: "one",
         };
       }
@@ -198,25 +208,29 @@ function mapModel(model: DMMF.Model, dmmf: DMMF.Document, config: Config): ZeroM
     throw new Error(`No primary key found for ${model.name}`);
   }
 
-  const tableName = getTableName(model);
+  const tableName = getTableNameFromModel(model);
   const camelCasedName = config?.remapTablesToCamelCase ? toCamelCase(tableName) : tableName;
-  
+
   const shouldRemap = config.remapTablesToCamelCase && camelCasedName !== tableName;
 
   return {
     tableName: shouldRemap ? camelCasedName : tableName,
     originalTableName: shouldRemap ? tableName : undefined,
     modelName: model.name,
-    zeroTableName: getZeroTableName(model.name),
+    zeroTableName: getZeroTableName(model.name, config),
     columns,
-    relationships: mapRelationships(model, dmmf),
+    relationships: mapRelationships(model, dmmf, config),
     primaryKey: ensureStringArray(primaryKey),
   };
 }
 
-export function transformSchema(dmmf: DMMF.Document, currentVersion: number, config: Config): TransformedSchema {
+export function transformSchema(
+  dmmf: DMMF.Document,
+  currentVersion: number,
+  config: Config
+): TransformedSchema {
   const models = dmmf.datamodel.models.map((model) => mapModel(model, dmmf, config));
-  
+
   // Add implicit many-to-many join tables (but don't include them in the final schema)
   const implicitJoinTables = dmmf.datamodel.models.flatMap((model) => {
     return model.fields
