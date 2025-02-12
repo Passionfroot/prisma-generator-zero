@@ -223,10 +223,10 @@ describe("Generator", () => {
       const postModel = createModel("Post", [
         createField("id", "Int", { isId: true }),
         createField("title", "String"),
-        createField("categories", "Category", { 
+        createField("categories", "Category", {
           isList: true,
           // relationName: "PostToCategory",
-          kind: "object"
+          kind: "object",
         }),
       ]);
 
@@ -234,10 +234,10 @@ describe("Generator", () => {
       const categoryModel = createModel("Category", [
         createField("id", "Int", { isId: true }),
         createField("name", "String"),
-        createField("posts", "Post", { 
+        createField("posts", "Post", {
           isList: true,
           // relationName: "PostToCategory",
-          kind: "object"
+          kind: "object",
         }),
       ]);
 
@@ -261,10 +261,10 @@ describe("Generator", () => {
       const postModel = createModel("Post", [
         createField("id", "Int", { isId: true }),
         createField("title", "String"),
-        createField("categories", "Category", { 
+        createField("categories", "Category", {
           isList: true,
           relationName: "MyCustomRelation",
-          kind: "object"
+          kind: "object",
         }),
       ]);
 
@@ -272,10 +272,10 @@ describe("Generator", () => {
       const categoryModel = createModel("Category", [
         createField("id", "Int", { isId: true }),
         createField("name", "String"),
-        createField("posts", "Post", { 
+        createField("posts", "Post", {
           isList: true,
           relationName: "MyCustomRelation",
-          kind: "object"
+          kind: "object",
         }),
       ]);
 

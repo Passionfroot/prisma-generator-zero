@@ -41,18 +41,18 @@ export function createModel(
   };
 }
 
-export function createEnum(
-  name: string,
-  values: string[]
-): DMMF.DatamodelEnum {
+export function createEnum(name: string, values: string[]): DMMF.DatamodelEnum {
   return {
     name,
     dbName: null,
-    values: values.map(v => ({ name: v, dbName: null })),
+    values: values.map((v) => ({ name: v, dbName: null })),
   };
 }
 
-export function createMockDMMF(models: DMMF.Model[], enums: DMMF.DatamodelEnum[] = []): DMMF.Document {
+export function createMockDMMF(
+  models: DMMF.Model[],
+  enums: DMMF.DatamodelEnum[] = []
+): DMMF.Document {
   return {
     datamodel: {
       models,
@@ -63,4 +63,4 @@ export function createMockDMMF(models: DMMF.Model[], enums: DMMF.DatamodelEnum[]
     schema: {} as any,
     mappings: {} as any,
   };
-} 
+}

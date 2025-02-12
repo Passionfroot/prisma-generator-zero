@@ -67,4 +67,4 @@ describe("mapPrismaTypeToZero", () => {
     expect(result.type).toBe("string()");
     expect(result.isOptional).toBe(false);
   });
-}); 
+});

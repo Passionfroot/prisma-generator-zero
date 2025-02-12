@@ -106,7 +106,8 @@ describe("Hash Utilities", () => {
         createField("name", "String"),
       ]);
 
-      const model2 = createModel("Customer", [ // Changed model name
+      const model2 = createModel("Customer", [
+        // Changed model name
         createField("id", "String", { isId: true }),
         createField("name", "String"),
       ]);
@@ -155,4 +156,4 @@ describe("Hash Utilities", () => {
       expect(hash1).toBe(hash2);
     });
   });
-}); 
+});
