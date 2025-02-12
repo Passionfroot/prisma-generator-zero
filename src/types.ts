@@ -5,6 +5,7 @@ export type Config = {
   prettier: boolean;
   resolvePrettierConfig: boolean;
   schemaVersion?: number;
+  remapTablesToCamelCase: boolean;
 };
 
 export type SchemaVersion = {
@@ -38,6 +39,7 @@ export type ZeroRelationship = {
 
 export type ZeroModel = {
   tableName: string;
+  originalTableName?: string;
   modelName: string;
   zeroTableName: string;
   columns: Record<string, ZeroTypeMapping>;

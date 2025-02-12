@@ -37,8 +37,14 @@ function generateColumnDefinition(name: string, mapping: ZeroTypeMapping): strin
 }
 
 function generateModelSchema(model: ZeroModel): string {
-  let output = `export const ${model.zeroTableName} = table("${model.tableName}")\n`;
-  output += "  .columns({\n";
+  let output = `export const ${model.zeroTableName} = table("${model.tableName}")`;
+  
+  // Add .from() if we have an original table name
+  if (model.originalTableName) {
+    output += `\n  .from("${model.originalTableName}")`;
+  }
+  
+  output += "\n  .columns({\n";
 
   Object.entries(model.columns).forEach(([name, mapping]) => {
     output += generateColumnDefinition(name, mapping) + ",\n";
