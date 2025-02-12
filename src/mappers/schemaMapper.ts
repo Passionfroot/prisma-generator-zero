@@ -1,7 +1,8 @@
 import type { DMMF } from "@prisma/generator-helper";
-import { ZeroModel, ZeroRelationship, TransformedSchema } from "../types";
+import { ZeroModel, ZeroRelationship, TransformedSchema, Config } from "../types";
 import { mapPrismaTypeToZero } from "./typeMapper";
 import { generateSchemaHash } from "../utils/hash";
+import { camelCase } from "change-case";
 
 function getTableName(model: DMMF.Model): string {
   return model.dbName || model.name;
@@ -35,13 +36,22 @@ function getImplicitManyToManyTableName(
 function createImplicitManyToManyModel(
   model1: DMMF.Model,
   model2: DMMF.Model,
-  relationName?: string
+  relationName?: string,
+  config?: Config
 ): ZeroModel {
   const tableName = getImplicitManyToManyTableName(model1.name, model2.name, relationName);
   const [modelA, modelB] = [model1, model2].sort((a, b) => a.name.localeCompare(b.name));
-
+  
+  // Apply camel case transformation if config is provided and remapTablesToCamelCase is true
+  const camelCasedName = config?.remapTablesToCamelCase ? camelCase(tableName, {
+    prefixCharacters: "_",
+  }) : tableName;
+  
+  const shouldRemap = config?.remapTablesToCamelCase && camelCasedName !== tableName;
+  
   return {
-    tableName,
+    tableName: shouldRemap ? camelCasedName : tableName,
+    originalTableName: shouldRemap ? tableName : undefined,
     modelName: tableName,
     zeroTableName: getZeroTableName(tableName),
     columns: {
@@ -164,7 +174,7 @@ function mapRelationships(
   return Object.keys(relationships).length > 0 ? relationships : undefined;
 }
 
-function mapModel(model: DMMF.Model, dmmf: DMMF.Document): ZeroModel {
+function mapModel(model: DMMF.Model, dmmf: DMMF.Document, config: Config): ZeroModel {
   const columns: Record<string, ReturnType<typeof mapPrismaTypeToZero>> = {};
 
   model.fields
@@ -179,8 +189,16 @@ function mapModel(model: DMMF.Model, dmmf: DMMF.Document): ZeroModel {
     throw new Error(`No primary key found for ${model.name}`);
   }
 
+  const tableName = getTableName(model);
+  const camelCasedName = camelCase(tableName, {
+    prefixCharacters: "_",
+  });
+  
+  const shouldRemap = config.remapTablesToCamelCase && camelCasedName !== tableName;
+
   return {
-    tableName: getTableName(model),
+    tableName: shouldRemap ? camelCasedName : tableName,
+    originalTableName: shouldRemap ? tableName : undefined,
     modelName: model.name,
     zeroTableName: getZeroTableName(model.name),
     columns,
@@ -189,10 +207,10 @@ function mapModel(model: DMMF.Model, dmmf: DMMF.Document): ZeroModel {
   };
 }
 
-export function transformSchema(dmmf: DMMF.Document, currentVersion: number): TransformedSchema {
-  const models = dmmf.datamodel.models.map((model) => mapModel(model, dmmf));
-
-  // Add implicit many-to-many join tables
+export function transformSchema(dmmf: DMMF.Document, currentVersion: number, config: Config): TransformedSchema {
+  const models = dmmf.datamodel.models.map((model) => mapModel(model, dmmf, config));
+  
+  // Add implicit many-to-many join tables (but don't include them in the final schema)
   const implicitJoinTables = dmmf.datamodel.models.flatMap((model) => {
     return model.fields
       .filter((field) => field.relationName && field.isList)
@@ -207,7 +225,7 @@ export function transformSchema(dmmf: DMMF.Document, currentVersion: number): Tr
         if (backReference?.isList) {
           // Only create the join table once for each relationship
           if (model.name.localeCompare(targetModel.name) < 0) {
-            return createImplicitManyToManyModel(model, targetModel, field.relationName);
+            return createImplicitManyToManyModel(model, targetModel, field.relationName, config);
           }
         }
         return null;

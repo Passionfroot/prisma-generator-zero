@@ -23,6 +23,7 @@ export async function onGenerate(options: GeneratorOptions) {
     schemaVersion: generator.config.schemaVersion
       ? Number(generator.config.schemaVersion)
       : undefined,
+    remapTablesToCamelCase: generator.config.remapTablesToCamelCase === "true", // Default false
   } satisfies Config;
 
   // Get current version and hash
@@ -32,7 +33,7 @@ export async function onGenerate(options: GeneratorOptions) {
   );
 
   // Transform the schema
-  const transformedSchema = transformSchema(dmmf, currentVersion);
+  const transformedSchema = transformSchema(dmmf, currentVersion, config);
 
   // Calculate next version
   const nextVersion = calculateNextVersion(
