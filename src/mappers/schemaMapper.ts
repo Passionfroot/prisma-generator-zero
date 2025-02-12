@@ -33,6 +33,17 @@ function getImplicitManyToManyTableName(
   return `_${first}To${second}`;
 }
 
+/**
+ * Convert a string to camel case, preserving the `_` prefix
+ * Eg. _my_table -> _myTable
+ */
+function toCamelCase(str: string): string {
+  const prefixMatch = str.match(/^_+/);
+  const prefix = prefixMatch ? prefixMatch[0] : '';
+  const rest = str.slice(prefix.length);
+  return prefix + camelCase(rest);
+}
+
 function createImplicitManyToManyModel(
   model1: DMMF.Model,
   model2: DMMF.Model,
@@ -43,9 +54,7 @@ function createImplicitManyToManyModel(
   const [modelA, modelB] = [model1, model2].sort((a, b) => a.name.localeCompare(b.name));
   
   // Apply camel case transformation if config is provided and remapTablesToCamelCase is true
-  const camelCasedName = config?.remapTablesToCamelCase ? camelCase(tableName, {
-    prefixCharacters: "_",
-  }) : tableName;
+  const camelCasedName = config?.remapTablesToCamelCase ? toCamelCase(tableName) : tableName;
   
   const shouldRemap = config?.remapTablesToCamelCase && camelCasedName !== tableName;
   
@@ -190,9 +199,7 @@ function mapModel(model: DMMF.Model, dmmf: DMMF.Document, config: Config): ZeroM
   }
 
   const tableName = getTableName(model);
-  const camelCasedName = camelCase(tableName, {
-    prefixCharacters: "_",
-  });
+  const camelCasedName = config?.remapTablesToCamelCase ? toCamelCase(tableName) : tableName;
   
   const shouldRemap = config.remapTablesToCamelCase && camelCasedName !== tableName;
 
