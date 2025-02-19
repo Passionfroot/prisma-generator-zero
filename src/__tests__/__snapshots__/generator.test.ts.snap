@@ -86,7 +86,8 @@ export const categoryTable = table("Category")
   })
   .primaryKey("id");
 
-export const _MyCustomRelationTable = table("_MyCustomRelation")
+export const _myCustomRelationTable = table("_MyCustomRelation")
+  .from("_MyCustomRelation")
   .columns({
     A: string(),
     B: string(),
@@ -100,7 +101,7 @@ export const postTableRelationships = relationships(postTable, ({ many }) => ({
   categories: many({
     sourceField: ["id"],
     destField: ["B"],
-    destSchema: _MyCustomRelationTable,
+    destSchema: _myCustomRelationTable,
   }, {
     sourceField: ["A"],
     destField: ["id"],
@@ -112,7 +113,7 @@ export const categoryTableRelationships = relationships(categoryTable, ({ many }
   posts: many({
     sourceField: ["id"],
     destField: ["A"],
-    destSchema: _MyCustomRelationTable,
+    destSchema: _myCustomRelationTable,
   }, {
     sourceField: ["B"],
     destField: ["id"],
@@ -120,7 +121,7 @@ export const categoryTableRelationships = relationships(categoryTable, ({ many }
   })
 }));
 
-export const _MyCustomRelationTableRelationships = relationships(_MyCustomRelationTable, ({ one }) => ({
+export const _myCustomRelationTableRelationships = relationships(_myCustomRelationTable, ({ one }) => ({
   modelA: one({
     sourceField: ["A"],
     destField: ["id"],
@@ -141,12 +142,12 @@ export const schema = createSchema(
     tables: [
       postTable,
       categoryTable,
-      _MyCustomRelationTable,
+      _myCustomRelationTable,
     ],
     relationships: [
       postTableRelationships,
       categoryTableRelationships,
-      _MyCustomRelationTableRelationships,
+      _myCustomRelationTableRelationships,
     ],
   }
 );
