@@ -12,8 +12,8 @@ function getTableNameFromModel(model: DMMF.Model): string {
  * Get the zero table name from a model name
  * Eg. IssueLabel -> issueLabelTable
  */
-function getZeroTableName(str: string, config?: Config): string {
-  const tableName = getTableName(str, config);
+function getZeroTableName(str: string): string {
+  const tableName = getTableName(str, { remapTablesToCamelCase: true });
   return tableName + "Table";
 }
 
@@ -49,7 +49,7 @@ function toCamelCase(str: string): string {
  * If remapTablesToCamelCase is true, convert the table name to camel case
  * Eg. issueLabel -> issueLabel
  */
-function getTableName(tableName: string, config?: Config): string {
+function getTableName(tableName: string, config?: Pick<Config, "remapTablesToCamelCase">): string {
   if (config?.remapTablesToCamelCase) {
     return toCamelCase(tableName);
   }
@@ -71,7 +71,7 @@ function createImplicitManyToManyModel(
     tableName,
     originalTableName,
     modelName: originalTableName,
-    zeroTableName: getZeroTableName(originalTableName, config),
+    zeroTableName: getZeroTableName(originalTableName),
     columns: {
       A: {
         type: "string()",
@@ -88,7 +88,7 @@ function createImplicitManyToManyModel(
         destField: modelA.fields.find((f) => f.isId)?.name
           ? [modelA.fields.find((f) => f.isId)!.name]
           : [],
-        destSchema: getZeroTableName(modelA.name, config),
+        destSchema: getZeroTableName(modelA.name),
         type: "one",
       },
       modelB: {
@@ -96,7 +96,7 @@ function createImplicitManyToManyModel(
         destField: modelB.fields.find((f) => f.isId)?.name
           ? [modelB.fields.find((f) => f.isId)!.name]
           : [],
-        destSchema: getZeroTableName(modelB.name, config),
+        destSchema: getZeroTableName(modelB.name),
         type: "one",
       },
     },
@@ -142,12 +142,12 @@ function mapRelationships(
               {
                 sourceField: [model.fields.find((f) => f.isId)?.name || "id"],
                 destField: [isModelA ? "A" : "B"],
-                destSchema: getZeroTableName(joinTableName, config),
+                destSchema: getZeroTableName(joinTableName),
               },
               {
                 sourceField: [isModelA ? "B" : "A"],
                 destField: [targetModel.fields.find((f) => f.isId)?.name || "id"],
-                destSchema: getZeroTableName(targetModel.name, config),
+                destSchema: getZeroTableName(targetModel.name),
               },
             ],
           };
@@ -162,7 +162,7 @@ function mapRelationships(
           relationships[field.name] = {
             sourceField: sourceFields,
             destField: destFields,
-            destSchema: getZeroTableName(targetModel.name, config),
+            destSchema: getZeroTableName(targetModel.name),
             type: "many",
           };
         }
@@ -184,7 +184,7 @@ function mapRelationships(
         relationships[field.name] = {
           sourceField: sourceFields,
           destField: destFields,
-          destSchema: getZeroTableName(targetModel.name, config),
+          destSchema: getZeroTableName(targetModel.name),
           type: "one",
         };
       }
@@ -217,7 +217,7 @@ function mapModel(model: DMMF.Model, dmmf: DMMF.Document, config: Config): ZeroM
     tableName: shouldRemap ? camelCasedName : tableName,
     originalTableName: shouldRemap ? tableName : undefined,
     modelName: model.name,
-    zeroTableName: getZeroTableName(model.name, config),
+    zeroTableName: getZeroTableName(model.name),
     columns,
     relationships: mapRelationships(model, dmmf, config),
     primaryKey: ensureStringArray(primaryKey),
