@@ -36,7 +36,6 @@ export const categoryTable = table("Category")
 // Define schema
 
 export const schema = createSchema(
-  1,
   {
     tables: [
       postTable,
@@ -49,9 +48,6 @@ export const schema = createSchema(
 export type Schema = typeof schema;
 export type Post = Row<typeof schema.tables.Post>;
 export type Category = Row<typeof schema.tables.Category>;
-
-// DO NOT TOUCH THIS. The schema hash is used to determine if the schema has changed and correctly update the version.
-// Schema hash: ebf739489923347cdfa58bc43b4f1aa9141f863e93ee48af05055d1a675314e9
 "
 `;
 
@@ -137,7 +133,6 @@ export const _myCustomRelationTableRelationships = relationships(_myCustomRelati
 // Define schema
 
 export const schema = createSchema(
-  1,
   {
     tables: [
       postTable,
@@ -157,9 +152,6 @@ export type Schema = typeof schema;
 export type Post = Row<typeof schema.tables.Post>;
 export type Category = Row<typeof schema.tables.Category>;
 export type _MyCustomRelation = Row<typeof schema.tables._MyCustomRelation>;
-
-// DO NOT TOUCH THIS. The schema hash is used to determine if the schema has changed and correctly update the version.
-// Schema hash: 844ac5b4c390f0f72a6338888bd4469f8c1bb0602b5ebe6c4411ec8cc768a399
 "
 `;
 
@@ -192,7 +184,6 @@ export const userTable = table("User")
 // Define schema
 
 export const schema = createSchema(
-  1,
   {
     tables: [
       userTable,
@@ -203,9 +194,6 @@ export const schema = createSchema(
 // Define types
 export type Schema = typeof schema;
 export type User = Row<typeof schema.tables.User>;
-
-// DO NOT TOUCH THIS. The schema hash is used to determine if the schema has changed and correctly update the version.
-// Schema hash: 0010b112e23e9471e565616609729ed91148ba7141e1232388976164dd1dec26
 "
 `;
 
@@ -243,7 +231,6 @@ export const userTable = table("User")
 // Define schema
 
 export const schema = createSchema(
-  1,
   {
     tables: [
       userTable,
@@ -254,9 +241,6 @@ export const schema = createSchema(
 // Define types
 export type Schema = typeof schema;
 export type User = Row<typeof schema.tables.User>;
-
-// DO NOT TOUCH THIS. The schema hash is used to determine if the schema has changed and correctly update the version.
-// Schema hash: b9a9a68f5a33016c062f5b4984d17cb4147f177ccf6a9be1c7dcf49bff9f69b6
 "
 `;
 
@@ -314,7 +298,6 @@ export const postTableRelationships = relationships(postTable, ({ one }) => ({
 // Define schema
 
 export const schema = createSchema(
-  1,
   {
     tables: [
       userTable,
@@ -331,8 +314,5 @@ export const schema = createSchema(
 export type Schema = typeof schema;
 export type User = Row<typeof schema.tables.User>;
 export type Post = Row<typeof schema.tables.Post>;
-
-// DO NOT TOUCH THIS. The schema hash is used to determine if the schema has changed and correctly update the version.
-// Schema hash: e8145ed27becf8118560ddf0a7d341f3d2cf3bf785bbea98a670ba3da4035b4b
 "
 `;

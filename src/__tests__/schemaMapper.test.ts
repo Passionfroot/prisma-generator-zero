@@ -19,7 +19,7 @@ describe("Schema Mapper", () => {
       ]);
 
       const dmmf = createMockDMMF([model]);
-      const result = transformSchema(dmmf, 1, baseConfig);
+      const result = transformSchema(dmmf, baseConfig);
 
       expect(result.models[0].tableName).toBe("UserProfile");
       expect(result.models[0].originalTableName).toBeUndefined();
@@ -32,7 +32,7 @@ describe("Schema Mapper", () => {
       ]);
 
       const dmmf = createMockDMMF([model]);
-      const result = transformSchema(dmmf, 1, {
+      const result = transformSchema(dmmf, {
         ...baseConfig,
         remapTablesToCamelCase: true,
       });
@@ -48,7 +48,7 @@ describe("Schema Mapper", () => {
       ]);
 
       const dmmf = createMockDMMF([model]);
-      const result = transformSchema(dmmf, 1, {
+      const result = transformSchema(dmmf, {
         ...baseConfig,
         remapTablesToCamelCase: true,
       });
@@ -66,7 +66,7 @@ describe("Schema Mapper", () => {
       });
 
       const dmmf = createMockDMMF([model]);
-      const result = transformSchema(dmmf, 1, {
+      const result = transformSchema(dmmf, {
         ...baseConfig,
         remapTablesToCamelCase: true,
       });
@@ -84,7 +84,7 @@ describe("Schema Mapper", () => {
       });
 
       const dmmf = createMockDMMF([model]);
-      const result = transformSchema(dmmf, 1, {
+      const result = transformSchema(dmmf, {
         ...baseConfig,
         remapTablesToCamelCase: true,
       });
@@ -102,7 +102,7 @@ describe("Schema Mapper", () => {
       });
 
       const dmmf = createMockDMMF([model]);
-      const result = transformSchema(dmmf, 1, {
+      const result = transformSchema(dmmf, {
         ...baseConfig,
         remapTablesToCamelCase: true,
       });
@@ -131,7 +131,7 @@ describe("Schema Mapper", () => {
       ]);
 
       const dmmf = createMockDMMF([postModel, categoryModel]);
-      const result = transformSchema(dmmf, 1, {
+      const result = transformSchema(dmmf, {
         ...baseConfig,
         remapTablesToCamelCase: true,
       });
