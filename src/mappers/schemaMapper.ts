@@ -1,7 +1,6 @@
 import type { DMMF } from "@prisma/generator-helper";
 import { ZeroModel, ZeroRelationship, TransformedSchema, Config } from "../types";
 import { mapPrismaTypeToZero } from "./typeMapper";
-import { generateSchemaHash } from "../utils/hash";
 import { camelCase } from "change-case";
 
 function getTableNameFromModel(model: DMMF.Model): string {
@@ -226,7 +225,6 @@ function mapModel(model: DMMF.Model, dmmf: DMMF.Document, config: Config): ZeroM
 
 export function transformSchema(
   dmmf: DMMF.Document,
-  currentVersion: number,
   config: Config
 ): TransformedSchema {
   const models = dmmf.datamodel.models.map((model) => mapModel(model, dmmf, config));
@@ -254,12 +252,8 @@ export function transformSchema(
       .filter((table): table is ZeroModel => table !== null);
   });
 
-  const hash = generateSchemaHash([...dmmf.datamodel.models], [...dmmf.datamodel.enums]);
-
   return {
     models: [...models, ...implicitJoinTables],
-    enums: [...dmmf.datamodel.enums],
-    version: currentVersion,
-    hash,
+    enums: [...dmmf.datamodel.enums]
   };
 }

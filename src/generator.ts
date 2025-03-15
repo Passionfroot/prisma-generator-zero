@@ -5,7 +5,6 @@ import { version } from "../package.json";
 import { Config } from "./types";
 import { transformSchema } from "./mappers/schemaMapper";
 import { generateCode } from "./generators/codeGenerator";
-import { getCurrentVersion, calculateNextVersion } from "./utils/version";
 
 export async function onGenerate(options: GeneratorOptions) {
   const { generator, dmmf } = options;
@@ -20,31 +19,11 @@ export async function onGenerate(options: GeneratorOptions) {
     name: generator.name,
     prettier: generator.config.prettier === "true", // Default false,
     resolvePrettierConfig: generator.config.resolvePrettierConfig !== "false", // Default true
-    schemaVersion: generator.config.schemaVersion
-      ? Number(generator.config.schemaVersion)
-      : undefined,
     remapTablesToCamelCase: generator.config.remapTablesToCamelCase === "true", // Default false
   } satisfies Config;
 
-  // Get current version and hash
-  const { version: currentVersion, hash: currentHash } = await getCurrentVersion(
-    outputDir,
-    outputFile
-  );
-
   // Transform the schema
-  const transformedSchema = transformSchema(dmmf, currentVersion, config);
-
-  // Calculate next version
-  const nextVersion = calculateNextVersion(
-    currentVersion,
-    currentHash,
-    transformedSchema.hash,
-    config.schemaVersion
-  );
-
-  // Update version in transformed schema
-  transformedSchema.version = nextVersion;
+  const transformedSchema = transformSchema(dmmf, config);
 
   // Generate code
   let output = generateCode(transformedSchema);

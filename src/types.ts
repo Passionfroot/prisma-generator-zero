@@ -4,13 +4,7 @@ export type Config = {
   name: string;
   prettier: boolean;
   resolvePrettierConfig: boolean;
-  schemaVersion?: number;
   remapTablesToCamelCase: boolean;
-};
-
-export type SchemaVersion = {
-  version: number;
-  hash: string | null;
 };
 
 export type ZeroTypeMapping = {
@@ -50,6 +44,4 @@ export type ZeroModel = {
 export type TransformedSchema = {
   models: ZeroModel[];
   enums: DMMF.DatamodelEnum[];
-  version: number;
-  hash: string;
 };

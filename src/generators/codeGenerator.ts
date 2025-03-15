@@ -119,7 +119,6 @@ ${relationshipsStr}
 function generateSchema(schema: TransformedSchema): string {
   let output = "// Define schema\n\n";
   output += "export const schema = createSchema(\n";
-  output += `  ${schema.version},\n`;
   output += "  {\n";
   output += "    tables: [\n";
   schema.models.forEach((model) => {
@@ -175,11 +174,6 @@ export function generateCode(schema: TransformedSchema): string {
 
   // Add schema
   output += generateSchema(schema);
-
-  // Add hash comment
-  output +=
-    "\n// DO NOT TOUCH THIS. The schema hash is used to determine if the schema has changed and correctly update the version.\n";
-  output += `// Schema hash: ${schema.hash}\n`;
 
   return output;
 }
