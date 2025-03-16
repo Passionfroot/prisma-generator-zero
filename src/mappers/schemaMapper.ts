@@ -106,7 +106,7 @@ function createImplicitManyToManyModel(
 function mapRelationships(
   model: DMMF.Model,
   dmmf: DMMF.Document,
-  config?: Config
+  config: Config
 ): Record<string, ZeroRelationship> | undefined {
   const relationships: Record<string, ZeroRelationship> = {};
 
@@ -116,6 +116,11 @@ function mapRelationships(
       const targetModel = dmmf.datamodel.models.find((m) => m.name === field.type);
       if (!targetModel) {
         throw new Error(`Target model ${field.type} not found for relationship ${field.name}`);
+      }
+
+      // Skip the field if the target model is excluded
+      if (config.excludeTables?.includes(targetModel.name)) {
+        return;
       }
 
       const backReference = targetModel.fields.find(
@@ -197,6 +202,9 @@ function mapModel(model: DMMF.Model, dmmf: DMMF.Document, config: Config): ZeroM
 
   model.fields
     .filter((field) => !field.relationName)
+    // Filter out list fields as Zero doesn't currently support arrays
+    // https://zero.rocicorp.dev/docs/postgres-support#column-types
+    .filter((field) => !field.isList)
     .forEach((field) => {
       columns[field.name] = mapPrismaTypeToZero(field);
     });
@@ -227,15 +235,23 @@ export function transformSchema(
   dmmf: DMMF.Document,
   config: Config
 ): TransformedSchema {
-  const models = dmmf.datamodel.models.map((model) => mapModel(model, dmmf, config));
+  // Filter out excluded models
+  const filteredModels = dmmf.datamodel.models.filter(model => {
+    return !config.excludeTables?.includes(model.name);
+  });
+
+  const models = filteredModels.map((model) => mapModel(model, dmmf, config));
 
   // Add implicit many-to-many join tables (but don't include them in the final schema)
-  const implicitJoinTables = dmmf.datamodel.models.flatMap((model) => {
+  const implicitJoinTables = filteredModels.flatMap((model) => {
     return model.fields
       .filter((field) => field.relationName && field.isList)
       .map((field) => {
         const targetModel = dmmf.datamodel.models.find((m) => m.name === field.type);
         if (!targetModel) return null;
+
+        // Skip if either model is excluded
+        if (config.excludeTables?.includes(targetModel.name)) return null;
 
         const backReference = targetModel.fields.find(
           (f) => f.relationName === field.relationName && f.type === model.name

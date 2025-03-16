@@ -5,6 +5,7 @@ export type Config = {
   prettier: boolean;
   resolvePrettierConfig: boolean;
   remapTablesToCamelCase: boolean;
+  excludeTables?: string[];
 };
 
 export type ZeroTypeMapping = {
