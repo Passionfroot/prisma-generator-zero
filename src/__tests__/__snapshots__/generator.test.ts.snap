@@ -21,7 +21,6 @@ export const postTable = table("Post")
   .columns({
     id: number(),
     title: string(),
-    categories: string(),
   })
   .primaryKey("id");
 
@@ -29,7 +28,6 @@ export const categoryTable = table("Category")
   .columns({
     id: number(),
     name: string(),
-    posts: string(),
   })
   .primaryKey("id");
 
