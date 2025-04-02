@@ -6,6 +6,7 @@ export type Config = {
   resolvePrettierConfig: boolean;
   remapTablesToCamelCase: boolean;
   excludeTables?: string[];
+  enumAsUnion?: boolean;
 };
 
 export type ZeroTypeMapping = {

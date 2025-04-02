@@ -37,6 +37,25 @@ function generateEnums(schema: TransformedSchema): string {
   return output;
 }
 
+function generateUnionTypes(schema: TransformedSchema): string {
+  if (schema.enums.length === 0) return "";
+
+  let output = "// Define enums as unions\n\n";
+  schema.enums.forEach((enumType) => {
+    output += `export type ${enumType.name} = `;
+    
+    const values = enumType.values.map(value => {
+      const enumValue = value.dbName || value.name;
+      return `"${enumValue}"`;
+    });
+    
+    output += values.join(" | ");
+    output += ";\n\n";
+  });
+
+  return output;
+}
+
 function generateColumnDefinition(name: string, mapping: ZeroTypeMapping): string {
   const typeStr = mapping.isOptional ? `${mapping.type}.optional()` : mapping.type;
   return `    ${name}: ${typeStr}`;

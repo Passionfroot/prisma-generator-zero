@@ -21,13 +21,14 @@ export async function onGenerate(options: GeneratorOptions) {
     resolvePrettierConfig: generator.config.resolvePrettierConfig !== "false", // Default true
     remapTablesToCamelCase: generator.config.remapTablesToCamelCase === "true", // Default false
     excludeTables: loadExcludeTables(generator),
+    enumAsUnion: generator.config.enumAsUnion === "true",
   } satisfies Config;
 
   // Transform the schema
   const transformedSchema = transformSchema(dmmf, config);
 
   // Generate code
-  let output = generateCode(transformedSchema);
+  let output = generateCode(transformedSchema, config);
 
   // Apply prettier if configured
   if (config.prettier) {
