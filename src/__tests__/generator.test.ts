@@ -89,7 +89,46 @@ describe("Generator", () => {
         primaryKey: null,
       };
 
-      await onGenerate(createTestOptions(createMockDMMF([mockModel], [mockEnum])));
+      await onGenerate(
+        createTestOptions(createMockDMMF([mockModel], [mockEnum])),
+      );
+
+      const [, contentBuffer] = vi.mocked(fs.writeFile).mock.calls[0];
+      const content = contentBuffer.toString();
+
+      expect(content).toMatchSnapshot();
+    });
+
+    it("should handle enums as unions correctly", async () => {
+      const mockEnum: DMMF.DatamodelEnum = {
+        name: "Role",
+        values: [
+          { name: "USER", dbName: null },
+          { name: "ADMIN", dbName: null },
+        ],
+        dbName: null,
+      };
+
+      const mockModel: DMMF.Model = {
+        name: "User",
+        dbName: null,
+        fields: [
+          createField("id", "String", { isId: true }),
+          createField("role", "Role", { kind: "enum" }),
+        ],
+        uniqueFields: [],
+        uniqueIndexes: [],
+        primaryKey: null,
+      };
+
+      const options = createTestOptions(
+        createMockDMMF([mockModel], [mockEnum]),
+      );
+
+      // Set the enumAsUnion configuration option to true
+      options.generator.config.enumAsUnion = "true";
+
+      await onGenerate(options);
 
       const [, contentBuffer] = vi.mocked(fs.writeFile).mock.calls[0];
       const content = contentBuffer.toString();

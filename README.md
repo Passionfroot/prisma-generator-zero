@@ -61,5 +61,7 @@ generator zero {
   // Helpful if you want to exclude Views (not supported by Zero) or other tables
   // you don't want Zero client to have access to
   excludeTables = ["Posts", "Comments", ...]
+  // Produce union type for Enums instead of TypeScript Enums
+  enumAsUnion = true
 }
 ```
