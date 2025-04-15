@@ -157,8 +157,10 @@ function mapRelationships(
           };
         } else {
           // Regular one-to-many relationship
+          // Use primaryKey fields first (for @@id), fallback to isId field (for @id)
           const idField = model.fields.find((f) => f.isId)?.name;
-          const sourceFields = idField ? [idField] : [];
+          const primaryKeyFields = model.primaryKey?.fields || (idField ? [idField] : []);
+          const sourceFields = ensureStringArray(primaryKeyFields);
           const destFields = backReference?.relationFromFields
             ? ensureStringArray(backReference.relationFromFields)
             : [];
