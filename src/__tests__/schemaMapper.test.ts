@@ -238,4 +238,64 @@ describe("Schema Mapper", () => {
       }
     });
   });
+
+  describe("Relationships", () => {
+    it("should correctly map one-to-many relationship with composite key on parent", () => {
+      const parentModel = createModel(
+        "Parent",
+        [
+          createField("parentId1", "String"),
+          createField("parentId2", "String"),
+          createField("children", "Child", {
+            isList: true,
+            relationName: "ParentToChild",
+            kind: "object",
+          }),
+        ],
+        {
+          primaryKey: {
+            name: null,
+            fields: ["parentId1", "parentId2"],
+          },
+        }
+      );
+
+      const childModel = createModel("Child", [
+        createField("id", "String", { isId: true }),
+        createField("parentFk1", "String"),
+        createField("parentFk2", "String"),
+        createField("parent", "Parent", {
+          relationName: "ParentToChild",
+          kind: "object",
+          relationFromFields: ["parentFk1", "parentFk2"],
+          relationToFields: ["parentId1", "parentId2"],
+        }),
+      ]);
+
+      const dmmf = createMockDMMF([parentModel, childModel]);
+      const result = transformSchema(dmmf, baseConfig);
+
+      const transformedParent = result.models.find((m) => m.modelName === "Parent");
+      expect(transformedParent).toBeDefined();
+      expect(transformedParent?.relationships).toBeDefined();
+
+      const childrenRelationship = transformedParent?.relationships?.children;
+      expect(childrenRelationship).toBeDefined();
+      expect(childrenRelationship?.type).toBe("many");
+
+      // Check that the relationship is not a chained one and has the expected fields
+      if (childrenRelationship && "sourceField" in childrenRelationship && "destField" in childrenRelationship && "destSchema" in childrenRelationship) {
+        // Check that the sourceField correctly uses the composite primary key
+        expect(childrenRelationship.sourceField).toEqual(["parentId1", "parentId2"]);
+        // Check that the destField correctly uses the foreign key fields from the Child model
+        expect(childrenRelationship.destField).toEqual(["parentFk1", "parentFk2"]);
+        expect(childrenRelationship.destSchema).toBe("childTable");
+      } else {
+        // Fail the test if the relationship structure is not as expected
+        expect(childrenRelationship).toHaveProperty("sourceField");
+        expect(childrenRelationship).toHaveProperty("destField");
+        expect(childrenRelationship).toHaveProperty("destSchema");
+      }
+    });
+  });
 });
