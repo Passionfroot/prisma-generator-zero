@@ -24,6 +24,8 @@ Then run the following command to generate the `schema.ts` file in the `./genera
 npx prisma generate
 ```
 
+> Note that unsupported column types (eg. `string[]`) will be automatically excluded from the generated schema.
+
 Now import the generated schema into your `schema` file and define your own permissions.
 
 ```ts
