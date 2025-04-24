@@ -7,13 +7,19 @@ export type Config = {
   remapTablesToCamelCase: boolean;
   excludeTables?: string[];
   enumAsUnion?: boolean;
+  remapColumnsToCamelCase?: boolean;
 };
 
-export type ZeroTypeMapping = {
+// Intermediate type for basic type/optionality mapping
+export type ZeroBaseTypeMapping = {
   type: string;
   isOptional?: boolean;
 };
 
+export type ZeroTypeMapping = ZeroBaseTypeMapping & {
+  columnName: string; // Final column name (potentially remapped)
+  originalColumnName?: string; // Original DB column name if @map is used
+};
 export type ZeroRelationshipLink = {
   sourceField: string[];
   destField: string[];

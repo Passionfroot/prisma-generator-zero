@@ -172,6 +172,54 @@ describe("Generator", () => {
       expect(content).toMatchSnapshot();
     });
   });
+it("should handle column mapping with @map and remapColumnsToCamelCase correctly", async () => {
+      const modelWithMappings = createModel("MappedProduct", [
+        createField("id", "String", { isId: true }), // No map, no remap needed
+        createField("product_code", "String"), // No map, remap needed
+        createField("priceAmount", "Float", { dbName: "price_in_db" }), // Map, remap needed (prisma name vs map)
+        createField("status", "String", { dbName: "current_status" }), // Map, no remap needed (prisma name vs map)
+        createField("alreadyCamel", "String"), // No map, no remap needed
+      ]);
+
+      const dmmf = createMockDMMF([modelWithMappings]);
+
+      // --- Test Case 1: remapColumnsToCamelCase = false ---
+      const optionsFalse = createTestOptions(dmmf);
+      optionsFalse.generator.config.remapColumnsToCamelCase = "false"; // Explicitly false
+
+      await onGenerate(optionsFalse);
+      let writeFileCalls = vi.mocked(fs.writeFile).mock.calls;
+      expect(writeFileCalls.length).toBe(1);
+      let [, contentBufferFalse] = writeFileCalls[0];
+      let contentFalse = contentBufferFalse.toString();
+
+      // Assertions for remapColumnsToCamelCase = false
+      expect(contentFalse).toContain('id: string()'); // No .from
+      expect(contentFalse).toContain('product_code: string()'); // No remap, no .from
+      expect(contentFalse).toContain('priceAmount: number().from("price_in_db")'); // Key=prismaName, .from=mapValue
+      expect(contentFalse).toContain('status: string().from("current_status")'); // Key=prismaName, .from=mapValue
+      expect(contentFalse).toContain('alreadyCamel: string()'); // No .from
+
+      // Clear mocks for the next run
+      vi.clearAllMocks();
+
+      // --- Test Case 2: remapColumnsToCamelCase = true ---
+      const optionsTrue = createTestOptions(dmmf);
+      optionsTrue.generator.config.remapColumnsToCamelCase = "true"; // Explicitly true
+
+      await onGenerate(optionsTrue);
+      writeFileCalls = vi.mocked(fs.writeFile).mock.calls;
+      expect(writeFileCalls.length).toBe(1);
+      let [, contentBufferTrue] = writeFileCalls[0];
+      let contentTrue = contentBufferTrue.toString();
+
+      // Assertions for remapColumnsToCamelCase = true
+      expect(contentTrue).toContain('id: string()'); // No .from
+      expect(contentTrue).toContain('productCode: string().from("product_code")'); // Key=camelCase, .from=original
+      expect(contentTrue).toContain('priceAmount: number().from("price_in_db")'); // Key=prismaName, .from=mapValue (map overrides remap)
+      expect(contentTrue).toContain('status: string().from("current_status")'); // Key=prismaName, .from=mapValue (map overrides remap)
+      expect(contentTrue).toContain('alreadyCamel: string()'); // No .from
+    });
 
   describe("Many-to-Many Relationships", () => {
     it("should generate correct schema for implicit many-to-many relationship", async () => {

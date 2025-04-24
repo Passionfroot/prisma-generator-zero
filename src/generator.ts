@@ -17,11 +17,12 @@ export async function onGenerate(options: GeneratorOptions) {
 
   const config = {
     name: generator.name,
-    prettier: generator.config.prettier === "true", // Default false,
-    resolvePrettierConfig: generator.config.resolvePrettierConfig !== "false", // Default true
-    remapTablesToCamelCase: generator.config.remapTablesToCamelCase === "true", // Default false
+    prettier: parseBooleanConfig(generator.config.prettier, false), // Default false
+    resolvePrettierConfig: parseBooleanConfigDefaultTrue(generator.config.resolvePrettierConfig), // Default true
+    remapTablesToCamelCase: parseBooleanConfig(generator.config.remapTablesToCamelCase, false), // Default false
+    remapColumnsToCamelCase: parseBooleanConfig(generator.config.remapColumnsToCamelCase, false), // Default false
     excludeTables: loadExcludeTables(generator),
-    enumAsUnion: generator.config.enumAsUnion === "true",
+    enumAsUnion: parseBooleanConfig(generator.config.enumAsUnion, false), // Default false
   } satisfies Config;
 
   // Transform the schema
@@ -77,4 +78,27 @@ function loadExcludeTables(generator: GeneratorConfig) {
   }
 
   return value;
+}
+/**
+ * Parses a boolean config value from Prisma generator config where the default is false.
+ * Handles boolean true, string "true", or returns false otherwise.
+ */
+function parseBooleanConfig(value: any, defaultValue: boolean): boolean {
+  if (value === undefined) {
+    return defaultValue;
+  }
+  // Check for both boolean true and string "true"
+  return value === true || value === "true";
+}
+
+/**
+ * Parses a boolean config value where the default is true.
+ * Handles boolean false, string "false", or returns true otherwise.
+ */
+function parseBooleanConfigDefaultTrue(value: any): boolean {
+  if (value === undefined) {
+    return true; // Default is true
+  }
+  // Return false only if explicitly set to false or "false"
+  return !(value === false || value === "false");
 }

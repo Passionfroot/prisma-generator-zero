@@ -43,12 +43,12 @@ function generateUnionTypes(schema: TransformedSchema): string {
   let output = "// Define enums as unions\n\n";
   schema.enums.forEach((enumType) => {
     output += `export type ${enumType.name} = `;
-    
+
     const values = enumType.values.map(value => {
       const enumValue = value.dbName || value.name;
       return `"${enumValue}"`;
     });
-    
+
     output += values.join(" | ");
     output += ";\n\n";
   });
@@ -57,18 +57,23 @@ function generateUnionTypes(schema: TransformedSchema): string {
 }
 
 function generateColumnDefinition(name: string, mapping: ZeroTypeMapping): string {
-  const typeStr = mapping.isOptional ? `${mapping.type}.optional()` : mapping.type;
-  return `    ${name}: ${typeStr}`;
+  let typeStr = mapping.isOptional ? `${mapping.type}.optional()` : mapping.type;
+  // Append .from() if originalColumnName exists
+  if (mapping.originalColumnName) {
+    typeStr += `.from("${mapping.originalColumnName}")`;
+  }
+  // Use mapping.columnName as the key in the output, not the original 'name'
+  return `    ${mapping.columnName}: ${typeStr}`;
 }
 
 function generateModelSchema(model: ZeroModel): string {
   let output = `export const ${model.zeroTableName} = table("${model.tableName}")`;
-  
+
   // Add .from() if we have an original table name
   if (model.originalTableName) {
     output += `\n  .from("${model.originalTableName}")`;
   }
-  
+
   output += "\n  .columns({\n";
 
   Object.entries(model.columns).forEach(([name, mapping]) => {
