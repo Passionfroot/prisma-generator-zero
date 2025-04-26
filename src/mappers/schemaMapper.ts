@@ -59,12 +59,23 @@ function createImplicitManyToManyModel(
   model1: DMMF.Model,
   model2: DMMF.Model,
   relationName?: string,
-  config?: Config
+  config?: Config,
 ): ZeroModel {
-  const originalTableName = getImplicitManyToManyTableName(model1.name, model2.name, relationName);
-  const [modelA, modelB] = [model1, model2].sort((a, b) => a.name.localeCompare(b.name));
+  const originalTableName = getImplicitManyToManyTableName(model1.name, model2.name, relationName)
+  const [modelA, modelB] = [model1, model2].sort((a, b) => a.name.localeCompare(b.name))
 
-  const tableName = getTableName(originalTableName, config);
+  const tableName = getTableName(originalTableName, config)
+
+  const modelA_pkField = modelA.fields.find((f) => f.isId)
+  const modelB_pkField = modelB.fields.find((f) => f.isId)
+
+  if (!modelA_pkField)
+    throw new Error(`Primary key not found for model ${modelA.name} involved in implicit relation for table ${originalTableName}`)
+  if (!modelB_pkField)
+    throw new Error(`Primary key not found for model ${modelB.name} involved in implicit relation for table ${originalTableName}`)
+
+  const zeroTypeMappingA = mapPrismaTypeToZero(modelA_pkField)
+  const zeroTypeMappingB = mapPrismaTypeToZero(modelB_pkField)
 
   return {
     tableName,
@@ -73,34 +84,30 @@ function createImplicitManyToManyModel(
     zeroTableName: getZeroTableName(originalTableName),
     columns: {
       A: {
-        type: "string()",
+        type: zeroTypeMappingA.type,
         isOptional: false,
       },
       B: {
-        type: "string()",
+        type: zeroTypeMappingB.type,
         isOptional: false,
       },
     },
     relationships: {
       modelA: {
         sourceField: ["A"],
-        destField: modelA.fields.find((f) => f.isId)?.name
-          ? [modelA.fields.find((f) => f.isId)!.name]
-          : [],
+        destField: modelA_pkField.name ? [modelA_pkField.name] : [],
         destSchema: getZeroTableName(modelA.name),
         type: "one",
       },
       modelB: {
         sourceField: ["B"],
-        destField: modelB.fields.find((f) => f.isId)?.name
-          ? [modelB.fields.find((f) => f.isId)!.name]
-          : [],
+        destField: modelB_pkField.name ? [modelB_pkField.name] : [],
         destSchema: getZeroTableName(modelB.name),
         type: "one",
       },
     },
     primaryKey: ["A", "B"],
-  };
+  }
 }
 
 function mapRelationships(

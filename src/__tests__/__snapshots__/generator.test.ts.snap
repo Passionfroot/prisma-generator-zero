@@ -83,8 +83,8 @@ export const categoryTable = table("Category")
 export const _myCustomRelationTable = table("_MyCustomRelation")
   .from("_MyCustomRelation")
   .columns({
-    A: string(),
-    B: string(),
+    A: number(),
+    B: number(),
   })
   .primaryKey("A", "B");
 
