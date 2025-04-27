@@ -66,35 +66,40 @@ function createImplicitManyToManyModel(
 
   const tableName = getTableName(originalTableName, config);
 
+  // Find the ID fields for modelA and modelB
+  const idFieldA = modelA.fields.find((f) => f.isId);
+  const idFieldB = modelB.fields.find((f) => f.isId);
+
+  if (!idFieldA) {
+    throw new Error(`Implicit relation ${relationName}: Model ${modelA.name} has no @id field.`);
+  }
+  if (!idFieldB) {
+    throw new Error(`Implicit relation ${relationName}: Model ${modelB.name} has no @id field.`);
+  }
+
+  // Map the Prisma types of the ID fields to Zero types
+  const columnAType = mapPrismaTypeToZero(idFieldA);
+  const columnBType = mapPrismaTypeToZero(idFieldB);
+
   return {
     tableName,
     originalTableName,
     modelName: originalTableName,
     zeroTableName: getZeroTableName(originalTableName),
     columns: {
-      A: {
-        type: "string()",
-        isOptional: false,
-      },
-      B: {
-        type: "string()",
-        isOptional: false,
-      },
+      A: columnAType,
+      B: columnBType,
     },
     relationships: {
       modelA: {
         sourceField: ["A"],
-        destField: modelA.fields.find((f) => f.isId)?.name
-          ? [modelA.fields.find((f) => f.isId)!.name]
-          : [],
+        destField: [idFieldA.name],
         destSchema: getZeroTableName(modelA.name),
         type: "one",
       },
       modelB: {
         sourceField: ["B"],
-        destField: modelB.fields.find((f) => f.isId)?.name
-          ? [modelB.fields.find((f) => f.isId)!.name]
-          : [],
+        destField: [idFieldB.name],
         destSchema: getZeroTableName(modelB.name),
         type: "one",
       },

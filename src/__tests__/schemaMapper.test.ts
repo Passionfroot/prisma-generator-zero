@@ -284,7 +284,12 @@ describe("Schema Mapper", () => {
       expect(childrenRelationship?.type).toBe("many");
 
       // Check that the relationship is not a chained one and has the expected fields
-      if (childrenRelationship && "sourceField" in childrenRelationship && "destField" in childrenRelationship && "destSchema" in childrenRelationship) {
+      if (
+        childrenRelationship &&
+        "sourceField" in childrenRelationship &&
+        "destField" in childrenRelationship &&
+        "destSchema" in childrenRelationship
+      ) {
         // Check that the sourceField correctly uses the composite primary key
         expect(childrenRelationship.sourceField).toEqual(["parentId1", "parentId2"]);
         // Check that the destField correctly uses the foreign key fields from the Child model
@@ -297,5 +302,40 @@ describe("Schema Mapper", () => {
         expect(childrenRelationship).toHaveProperty("destSchema");
       }
     });
+  });
+
+  it("should correctly map implicit many-to-many relationships with non-string primary keys", () => {
+    const postModel = createModel("Post", [
+      createField("id", "Int", { isId: true }),
+      createField("categories", "Category", {
+        isList: true,
+        relationName: "PostToCategory",
+        kind: "object",
+      }),
+    ]);
+
+    const categoryModel = createModel("Category", [
+      createField("id", "Int", { isId: true }),
+      createField("posts", "Post", {
+        isList: true,
+        relationName: "PostToCategory",
+        kind: "object",
+      }),
+    ]);
+
+    const dmmf = createMockDMMF([postModel, categoryModel]);
+    const result = transformSchema(dmmf, {
+      ...baseConfig,
+      remapTablesToCamelCase: true,
+    });
+
+    console.log(JSON.stringify(result, null, 2));
+    // Find the join table (note: the join table name is based on the relation name)
+    const joinTable = result.models.find((m) => m.modelName === "_PostToCategory");
+    expect(joinTable).toBeDefined();
+    if (joinTable) {
+      expect(joinTable.columns.A.type).toBe("number()");
+      expect(joinTable.columns.B.type).toBe("number()");
+    }
   });
 });
