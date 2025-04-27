@@ -89,9 +89,7 @@ describe("Generator", () => {
         primaryKey: null,
       };
 
-      await onGenerate(
-        createTestOptions(createMockDMMF([mockModel], [mockEnum])),
-      );
+      await onGenerate(createTestOptions(createMockDMMF([mockModel], [mockEnum])));
 
       const [, contentBuffer] = vi.mocked(fs.writeFile).mock.calls[0];
       const content = contentBuffer.toString();
@@ -121,9 +119,7 @@ describe("Generator", () => {
         primaryKey: null,
       };
 
-      const options = createTestOptions(
-        createMockDMMF([mockModel], [mockEnum]),
-      );
+      const options = createTestOptions(createMockDMMF([mockModel], [mockEnum]));
 
       // Set the enumAsUnion configuration option to true
       options.generator.config.enumAsUnion = "true";
@@ -170,6 +166,29 @@ describe("Generator", () => {
 
       // Verify the generated code contains the relationship definitions
       expect(content).toMatchSnapshot();
+    });
+
+    it("should generate correct schema for model with @map attributes", async () => {
+      const messageModel = createModel("message", [
+        createField("id", "String", { isId: true, dbName: null }), // No @map
+        createField("senderID", "String", {
+          isRequired: false,
+          dbName: "sender_id", // @map("sender_id")
+        }),
+        createField("mediumID", "String", {
+          isRequired: false,
+          dbName: "medium_id", // @map("medium_id")
+        }),
+      ]);
+
+      await onGenerate(createTestOptions(createMockDMMF([messageModel])));
+
+      const [, contentBuffer] = vi.mocked(fs.writeFile).mock.calls[0];
+      const content = contentBuffer.toString();
+
+      // Verify the output includes .from() calls for mapped columns
+      expect(content).toContain("senderID: string().from('sender_id').optional()");
+      expect(content).toContain("mediumID: string().from('medium_id').optional()");
     });
   });
 

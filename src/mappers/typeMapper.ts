@@ -13,16 +13,21 @@ const TYPE_MAP: Record<string, string> = {
 };
 
 export function mapPrismaTypeToZero(field: DMMF.Field): ZeroTypeMapping {
+  const isOptional = !field.isRequired;
+  const mappedName = field.dbName && field.dbName !== field.name ? field.dbName : undefined;
+
   if (field.kind === "enum") {
     return {
       type: `enumeration<${field.type}>()`,
-      isOptional: !field.isRequired,
+      isOptional,
+      mappedName,
     };
   }
 
   const baseType = TYPE_MAP[field.type] || "string()";
   return {
     type: baseType,
-    isOptional: !field.isRequired,
+    isOptional,
+    mappedName,
   };
 }
