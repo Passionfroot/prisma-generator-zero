@@ -329,7 +329,6 @@ describe("Schema Mapper", () => {
       remapTablesToCamelCase: true,
     });
 
-    console.log(JSON.stringify(result, null, 2));
     // Find the join table (note: the join table name is based on the relation name)
     const joinTable = result.models.find((m) => m.modelName === "_PostToCategory");
     expect(joinTable).toBeDefined();
