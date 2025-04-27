@@ -54,10 +54,8 @@ describe("Generator", () => {
 
       await onGenerate(createTestOptions(createMockDMMF([mockModel])));
 
-      // Verify mkdir was called
       expect(fs.mkdir).toHaveBeenCalledWith("generated", { recursive: true });
 
-      // Verify writeFile was called with correct schema
       const writeFileCalls = vi.mocked(fs.writeFile).mock.calls;
       expect(writeFileCalls.length).toBe(1);
 
@@ -125,7 +123,6 @@ describe("Generator", () => {
         createMockDMMF([mockModel], [mockEnum]),
       );
 
-      // Set the enumAsUnion configuration option to true
       options.generator.config.enumAsUnion = "true";
 
       await onGenerate(options);
@@ -137,7 +134,6 @@ describe("Generator", () => {
     });
 
     it("should handle relationships correctly", async () => {
-      // Create User model with a one-to-many relationship to Post
       const userModel = createModel("User", [
         createField("id", "String", { isId: true }),
         createField("name", "String"),
@@ -150,7 +146,6 @@ describe("Generator", () => {
         }),
       ]);
 
-      // Create Post model with both the foreign key and the relation field
       const postModel = createModel("Post", [
         createField("id", "String", { isId: true }),
         createField("title", "String"),
@@ -168,24 +163,50 @@ describe("Generator", () => {
       const [, contentBuffer] = vi.mocked(fs.writeFile).mock.calls[0];
       const content = contentBuffer.toString();
 
-      // Verify the generated code contains the relationship definitions
       expect(content).toMatchSnapshot();
     });
   });
-it("should handle column mapping with @map and remapColumnsToCamelCase correctly", async () => {
-      const modelWithMappings = createModel("MappedProduct", [
-        createField("id", "String", { isId: true }), // No map, no remap needed
-        createField("product_code", "String"), // No map, remap needed
-        createField("priceAmount", "Float", { dbName: "price_in_db" }), // Map, remap needed (prisma name vs map)
-        createField("status", "String", { dbName: "current_status" }), // Map, no remap needed (prisma name vs map)
-        createField("alreadyCamel", "String"), // No map, no remap needed
+
+  it("should handle model mapping with @@map correctly", async () => {
+    // model cdr @@map("xml_cdr")
+    const mappedModel = createModel("cdr", [
+      createField("id", "Int", { isId: true }),
+      createField("data", "String"),
+    ], { dbName: "xml_cdr" });
+
+    const dmmf = createMockDMMF([mappedModel]);
+    const options = createTestOptions(dmmf);
+    // Assuming default remapTablesToCamelCase = false for this test
+
+    await onGenerate(options);
+
+    const writeFileCalls = vi.mocked(fs.writeFile).mock.calls;
+    expect(writeFileCalls.length).toBe(1);
+    const [, contentBuffer] = writeFileCalls[0];
+    const content = contentBuffer.toString();
+
+    expect(content).toContain('export const cdrTable = table("cdr")');
+    expect(content).toContain('.from("xml_cdr")');
+    expect(content).toContain('tables: [\n      cdrTable,\n    ],');
+    expect(content).toContain('export type cdr = Row<typeof schema.tables.cdr>;');
+
+    expect(content).toMatchSnapshot("model @@map test");
+  });
+
+  it("should handle column mapping with @map and remapColumnsToCamelCase correctly", async () => {
+    const modelWithMappings = createModel("MappedProduct", [
+      createField("id", "String", { isId: true }),
+        createField("product_code", "String"),
+        createField("priceAmount", "Float", { dbName: "price_in_db" }),
+        createField("status", "String", { dbName: "current_status" }),
+        createField("alreadyCamel", "String"),
       ]);
 
       const dmmf = createMockDMMF([modelWithMappings]);
 
       // --- Test Case 1: remapColumnsToCamelCase = false ---
       const optionsFalse = createTestOptions(dmmf);
-      optionsFalse.generator.config.remapColumnsToCamelCase = "false"; // Explicitly false
+      optionsFalse.generator.config.remapColumnsToCamelCase = "false";
 
       await onGenerate(optionsFalse);
       let writeFileCalls = vi.mocked(fs.writeFile).mock.calls;
@@ -193,19 +214,18 @@ it("should handle column mapping with @map and remapColumnsToCamelCase correctly
       let [, contentBufferFalse] = writeFileCalls[0];
       let contentFalse = contentBufferFalse.toString();
 
-      // Assertions for remapColumnsToCamelCase = false
-      expect(contentFalse).toContain('id: string()'); // No .from
-      expect(contentFalse).toContain('product_code: string()'); // No remap, no .from
-      expect(contentFalse).toContain('priceAmount: number().from("price_in_db")'); // Key=prismaName, .from=mapValue
-      expect(contentFalse).toContain('status: string().from("current_status")'); // Key=prismaName, .from=mapValue
-      expect(contentFalse).toContain('alreadyCamel: string()'); // No .from
+      expect(contentFalse).toContain('id: string()');
+      expect(contentFalse).toContain('product_code: string()');
+      expect(contentFalse).toContain('priceAmount: number().from("price_in_db")');
+      expect(contentFalse).toContain('status: string().from("current_status")');
+      expect(contentFalse).toContain('alreadyCamel: string()');
 
-      // Clear mocks for the next run
       vi.clearAllMocks();
 
-      // --- Test Case 2: remapColumnsToCamelCase = true ---
+      // --- Test Case 2: remapTablesToCamelCase = true (and columns) ---
       const optionsTrue = createTestOptions(dmmf);
-      optionsTrue.generator.config.remapColumnsToCamelCase = "true"; // Explicitly true
+      optionsTrue.generator.config.remapTablesToCamelCase = "true";
+      optionsTrue.generator.config.remapColumnsToCamelCase = "true";
 
       await onGenerate(optionsTrue);
       writeFileCalls = vi.mocked(fs.writeFile).mock.calls;
@@ -213,34 +233,33 @@ it("should handle column mapping with @map and remapColumnsToCamelCase correctly
       let [, contentBufferTrue] = writeFileCalls[0];
       let contentTrue = contentBufferTrue.toString();
 
-      // Assertions for remapColumnsToCamelCase = true
-      expect(contentTrue).toContain('id: string()'); // No .from
-      expect(contentTrue).toContain('productCode: string().from("product_code")'); // Key=camelCase, .from=original
-      expect(contentTrue).toContain('priceAmount: number().from("price_in_db")'); // Key=prismaName, .from=mapValue (map overrides remap)
-      expect(contentTrue).toContain('status: string().from("current_status")'); // Key=prismaName, .from=mapValue (map overrides remap)
-      expect(contentTrue).toContain('alreadyCamel: string()'); // No .from
+      expect(contentTrue).toContain('id: string()');
+      expect(contentTrue).toContain('productCode: string().from("product_code")');
+      expect(contentTrue).toContain('priceAmount: number().from("price_in_db")');
+      expect(contentTrue).toContain('status: string().from("current_status")');
+      expect(contentTrue).toContain('alreadyCamel: string()');
+
+      expect(contentTrue).toContain('export type mappedProduct = Row<typeof schema.tables.mappedProduct>;');
     });
 
   describe("Many-to-Many Relationships", () => {
     it("should generate correct schema for implicit many-to-many relationship", async () => {
-      // Create Post model with categories relationship
       const postModel = createModel("Post", [
         createField("id", "Int", { isId: true }),
         createField("title", "String"),
         createField("categories", "Category", {
           isList: true,
-          // relationName: "PostToCategory",
+
           kind: "object",
         }),
       ]);
 
-      // Create Category model with posts relationship
       const categoryModel = createModel("Category", [
         createField("id", "Int", { isId: true }),
         createField("name", "String"),
         createField("posts", "Post", {
           isList: true,
-          // relationName: "PostToCategory",
+
           kind: "object",
         }),
       ]);
@@ -253,7 +272,6 @@ it("should handle column mapping with @map and remapColumnsToCamelCase correctly
 
       await onGenerate(options);
 
-      // Get the generated code
       const writeFileCall = vi.mocked(fs.writeFile).mock.calls[0];
       const generatedCode = writeFileCall[1] as string;
 
@@ -261,7 +279,6 @@ it("should handle column mapping with @map and remapColumnsToCamelCase correctly
     });
 
     it("should use custom relation name for implicit many-to-many table", async () => {
-      // Create Post model with categories relationship using custom relation name
       const postModel = createModel("Post", [
         createField("id", "Int", { isId: true }),
         createField("title", "String"),
@@ -272,7 +289,6 @@ it("should handle column mapping with @map and remapColumnsToCamelCase correctly
         }),
       ]);
 
-      // Create Category model with posts relationship
       const categoryModel = createModel("Category", [
         createField("id", "Int", { isId: true }),
         createField("name", "String"),
@@ -291,7 +307,6 @@ it("should handle column mapping with @map and remapColumnsToCamelCase correctly
 
       await onGenerate(options);
 
-      // Get the generated code
       const writeFileCall = vi.mocked(fs.writeFile).mock.calls[0];
       const generatedCode = writeFileCall[1] as string;
 

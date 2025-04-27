@@ -1,5 +1,4 @@
 import type { DMMF } from "@prisma/generator-helper";
-// Import ZeroBaseTypeMapping instead of ZeroTypeMapping
 import { ZeroBaseTypeMapping } from "../types";
 
 const TYPE_MAP: Record<string, string> = {
@@ -13,7 +12,6 @@ const TYPE_MAP: Record<string, string> = {
   Decimal: "number()",
 };
 
-// Update return type to ZeroBaseTypeMapping
 export function mapPrismaTypeToZero(field: DMMF.Field): ZeroBaseTypeMapping {
   if (field.kind === "enum") {
     return {

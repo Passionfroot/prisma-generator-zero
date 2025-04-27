@@ -162,7 +162,9 @@ describe("Schema Mapper", () => {
         remapTablesToCamelCase: true,
       });
 
-      expect(result.models[0].tableName).toBe("userProfile");
+      // Expect tableName based on model.name ("User"), no remapping because @@map exists
+      expect(result.models[0].tableName).toBe("User");
+      // originalTableName should hold the mapped name (dbName) when @@map is used
       expect(result.models[0].originalTableName).toBe("user_profile");
     });
 
@@ -181,7 +183,9 @@ describe("Schema Mapper", () => {
         remapTablesToCamelCase: true,
       });
 
-      expect(result.models[0].tableName).toBe("userProfileSettings");
+      // Expect tableName based on model.name ("User"), no remapping because @@map exists
+      expect(result.models[0].tableName).toBe("User");
+      // originalTableName should hold the mapped name (dbName) when @@map is used
       expect(result.models[0].originalTableName).toBe("user_profile_settings");
     });
 
@@ -200,7 +204,9 @@ describe("Schema Mapper", () => {
         remapTablesToCamelCase: true,
       });
 
-      expect(result.models[0].tableName).toBe("_userProfile");
+      // Expect tableName based on model.name ("UserProfile"), no remapping because @@map exists
+      expect(result.models[0].tableName).toBe("UserProfile");
+      // originalTableName should hold the mapped name (dbName) when @@map is used
       expect(result.models[0].originalTableName).toBe("_UserProfile");
     });
 
@@ -289,7 +295,8 @@ describe("Schema Mapper", () => {
         expect(childrenRelationship.sourceField).toEqual(["parentId1", "parentId2"]);
         // Check that the destField correctly uses the foreign key fields from the Child model
         expect(childrenRelationship.destField).toEqual(["parentFk1", "parentFk2"]);
-        expect(childrenRelationship.destSchema).toBe("childTable");
+        // Expect PascalCase 'ChildTable' because remapTablesToCamelCase is false in baseConfig
+        expect(childrenRelationship.destSchema).toBe("ChildTable");
       } else {
         // Fail the test if the relationship structure is not as expected
         expect(childrenRelationship).toHaveProperty("sourceField");
@@ -405,7 +412,6 @@ describe("Field Mapping (@map)", () => {
       expect(underscoreMapping.originalColumnName).toBe("_internal_code");
     });
 
-    // Moved this test case inside the 'remapColumnsToCamelCase' describe block
     it("should remap primary key column names when remapColumnsToCamelCase is true", () => {
       const model = createModel(
         "OrderItem",
@@ -422,7 +428,7 @@ describe("Field Mapping (@map)", () => {
       const dmmf = createMockDMMF([model]);
       const result = transformSchema(dmmf, {
         ...baseConfig,
-        remapColumnsToCamelCase: true, // Option is on
+        remapColumnsToCamelCase: true,
       });
 
       expect(result.models).toHaveLength(1);
@@ -462,7 +468,7 @@ it("should remap relationship fields (FKs) when remapColumnsToCamelCase is true"
       const dmmf = createMockDMMF([authorModel, postModel]);
       const result = transformSchema(dmmf, {
         ...baseConfig,
-        remapColumnsToCamelCase: true, // Option is on
+        remapColumnsToCamelCase: true,
       });
 
       const transformedAuthor = result.models.find((m) => m.modelName === "Author");

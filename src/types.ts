@@ -10,15 +10,14 @@ export type Config = {
   remapColumnsToCamelCase?: boolean;
 };
 
-// Intermediate type for basic type/optionality mapping
 export type ZeroBaseTypeMapping = {
   type: string;
   isOptional?: boolean;
 };
 
 export type ZeroTypeMapping = ZeroBaseTypeMapping & {
-  columnName: string; // Final column name (potentially remapped)
-  originalColumnName?: string; // Original DB column name if @map is used
+  columnName: string;
+  originalColumnName?: string;
 };
 export type ZeroRelationshipLink = {
   sourceField: string[];
@@ -43,10 +42,13 @@ export type ZeroModel = {
   tableName: string;
   originalTableName?: string;
   modelName: string;
-  zeroTableName: string;
+  typeName: string;
+  zeroTableName: string; // Legacy: Original name + "Table" suffix (e.g., issueLabelTable) - Maybe remove later?
+  zeroVariableName: string;
   columns: Record<string, ZeroTypeMapping>;
   relationships?: Record<string, ZeroRelationship>;
   primaryKey: string[];
+  mapApplied?: boolean;
 };
 
 export type TransformedSchema = {

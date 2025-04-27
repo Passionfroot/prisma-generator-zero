@@ -17,21 +17,18 @@ export async function onGenerate(options: GeneratorOptions) {
 
   const config = {
     name: generator.name,
-    prettier: parseBooleanConfig(generator.config.prettier, false), // Default false
-    resolvePrettierConfig: parseBooleanConfigDefaultTrue(generator.config.resolvePrettierConfig), // Default true
-    remapTablesToCamelCase: parseBooleanConfig(generator.config.remapTablesToCamelCase, false), // Default false
-    remapColumnsToCamelCase: parseBooleanConfig(generator.config.remapColumnsToCamelCase, false), // Default false
+    prettier: parseBooleanConfig(generator.config.prettier, false),
+    resolvePrettierConfig: parseBooleanConfigDefaultTrue(generator.config.resolvePrettierConfig),
+    remapTablesToCamelCase: parseBooleanConfig(generator.config.remapTablesToCamelCase, false),
+    remapColumnsToCamelCase: parseBooleanConfig(generator.config.remapColumnsToCamelCase, false),
     excludeTables: loadExcludeTables(generator),
-    enumAsUnion: parseBooleanConfig(generator.config.enumAsUnion, false), // Default false
+    enumAsUnion: parseBooleanConfig(generator.config.enumAsUnion, false),
   } satisfies Config;
 
-  // Transform the schema
   const transformedSchema = transformSchema(dmmf, config);
 
-  // Generate code
   let output = generateCode(transformedSchema, config);
 
-  // Apply prettier if configured
   if (config.prettier) {
     let prettier: typeof import("prettier");
     try {
@@ -51,7 +48,6 @@ export async function onGenerate(options: GeneratorOptions) {
   await writeFile(join(outputDir, outputFile), output);
 }
 
-// Use the exported function in the generator handler
 generatorHandler({
   onManifest() {
     return {
@@ -87,7 +83,6 @@ function parseBooleanConfig(value: any, defaultValue: boolean): boolean {
   if (value === undefined) {
     return defaultValue;
   }
-  // Check for both boolean true and string "true"
   return value === true || value === "true";
 }
 
@@ -97,8 +92,7 @@ function parseBooleanConfig(value: any, defaultValue: boolean): boolean {
  */
 function parseBooleanConfigDefaultTrue(value: any): boolean {
   if (value === undefined) {
-    return true; // Default is true
+    return true;
   }
-  // Return false only if explicitly set to false or "false"
   return !(value === false || value === "false");
 }
