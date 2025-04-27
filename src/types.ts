@@ -12,6 +12,7 @@ export type Config = {
 export type ZeroTypeMapping = {
   type: string;
   isOptional?: boolean;
+  mappedName?: string;
 };
 
 export type ZeroRelationshipLink = {
