@@ -20,6 +20,7 @@ export async function onGenerate(options: GeneratorOptions) {
     prettier: generator.config.prettier === "true", // Default false,
     resolvePrettierConfig: generator.config.resolvePrettierConfig !== "false", // Default true
     remapTablesToCamelCase: generator.config.remapTablesToCamelCase === "true", // Default false
+    remapColumnsToCamelCase: generator.config.remapColumnsToCamelCase === "true", // Default false
     excludeTables: loadExcludeTables(generator),
     enumAsUnion: generator.config.enumAsUnion === "true",
   } satisfies Config;
