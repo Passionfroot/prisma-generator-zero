@@ -9,6 +9,7 @@ describe("Schema Mapper", () => {
     prettier: false,
     resolvePrettierConfig: false,
     remapTablesToCamelCase: false,
+    remapColumnsToCamelCase: false, // Add default value
   };
 
   describe("excludeTables", () => {
@@ -337,4 +338,209 @@ describe("Schema Mapper", () => {
       expect(joinTable.columns.B.type).toBe("number()");
     }
   });
+describe("remapColumnsToCamelCase", () => {
+    const configWithRemap: Config = {
+      ...baseConfig,
+      remapColumnsToCamelCase: true,
+    };
+
+    it("should remap column names to camel case", () => {
+      const model = createModel("TestModel", [
+        createField("id", "String", { isId: true }),
+        createField("user_id", "String"),
+        createField("created_at", "DateTime"),
+      ]);
+      const dmmf = createMockDMMF([model]);
+      const result = transformSchema(dmmf, configWithRemap);
+      const transformedModel = result.models[0];
+
+      expect(transformedModel.columns).toHaveProperty("userId");
+      expect(transformedModel.columns).toHaveProperty("createdAt");
+      expect(transformedModel.columns).not.toHaveProperty("user_id");
+      expect(transformedModel.columns).not.toHaveProperty("created_at");
+      // Check mappedName is set correctly when remapping occurs without @map
+      expect(transformedModel.columns.userId.mappedName).toBe("user_id");
+      expect(transformedModel.columns.createdAt.mappedName).toBe("created_at");
+    });
+
+    it("should preserve column name if already in camel case", () => {
+      const model = createModel("TestModel", [
+        createField("id", "String", { isId: true }),
+        createField("userId", "String"),
+      ]);
+      const dmmf = createMockDMMF([model]);
+      const result = transformSchema(dmmf, configWithRemap);
+      const transformedModel = result.models[0];
+
+      expect(transformedModel.columns).toHaveProperty("userId");
+      // Check mappedName is undefined when no remapping or @map
+      expect(transformedModel.columns.userId.mappedName).toBeUndefined();
+    });
+
+    it("should handle column names with leading/multiple underscores", () => {
+      const model = createModel("TestModel", [
+        createField("id", "String", { isId: true }),
+        createField("_internal_field", "String"),
+        createField("__private_data", "String"),
+      ]);
+      const dmmf = createMockDMMF([model]);
+      const result = transformSchema(dmmf, configWithRemap);
+      const transformedModel = result.models[0];
+
+      expect(transformedModel.columns).toHaveProperty("_internalField");
+      expect(transformedModel.columns).toHaveProperty("__privateData");
+      expect(transformedModel.columns._internalField.mappedName).toBe("_internal_field");
+      expect(transformedModel.columns.__privateData.mappedName).toBe("__private_data");
+    });
+
+    it("should handle @map attribute correctly when remapping", () => {
+      const model = createModel("TestModel", [
+        createField("id", "String", { isId: true }),
+        createField("user_identifier", "String", { dbName: "user_id_in_db" }), // Prisma name differs from DB name
+      ]);
+      const dmmf = createMockDMMF([model]);
+      const result = transformSchema(dmmf, configWithRemap);
+      const transformedModel = result.models[0];
+
+      // Key should be camelCase of Prisma name
+      expect(transformedModel.columns).toHaveProperty("userIdentifier");
+      expect(transformedModel.columns).not.toHaveProperty("user_identifier");
+      expect(transformedModel.columns).not.toHaveProperty("userIdInDb");
+      // mappedName should be the dbName from @map
+      expect(transformedModel.columns.userIdentifier.mappedName).toBe("user_id_in_db");
+    });
+
+     it("should handle @map attribute when Prisma name is already camelCase", () => {
+      const model = createModel("TestModel", [
+        createField("id", "String", { isId: true }),
+        createField("userId", "String", { dbName: "user_uuid" }), // Prisma name already camelCase
+      ]);
+      const dmmf = createMockDMMF([model]);
+      const result = transformSchema(dmmf, configWithRemap);
+      const transformedModel = result.models[0];
+
+      expect(transformedModel.columns).toHaveProperty("userId");
+      // mappedName should still be the dbName from @map
+      expect(transformedModel.columns.userId.mappedName).toBe("user_uuid");
+    });
+
+    it("should remap primary key fields", () => {
+      const model = createModel(
+        "TestModel",
+        [createField("primary_key_part_1", "String"), createField("primary_key_part_2", "String")],
+        { primaryKey: { name: null, fields: ["primary_key_part_1", "primary_key_part_2"] } }
+      );
+      const dmmf = createMockDMMF([model]);
+      const result = transformSchema(dmmf, configWithRemap);
+      const transformedModel = result.models[0];
+
+      // Expect the default change-case behavior with mergeAmbiguousCharacters: true
+      expect(transformedModel.primaryKey).toEqual(["primaryKeyPart_1", "primaryKeyPart_2"]);
+      expect(transformedModel.columns).toHaveProperty("primaryKeyPart_1");
+      expect(transformedModel.columns).toHaveProperty("primaryKeyPart_2");
+    });
+
+    it("should remap foreign key fields in relationships (1:N)", () => {
+      const userModel = createModel("User", [
+        createField("user_id", "String", { isId: true }),
+        createField("posts", "Post", { isList: true, relationName: "UserPosts" }),
+      ]);
+      const postModel = createModel("Post", [
+        createField("post_id", "String", { isId: true }),
+        createField("author_user_id", "String"), // Foreign key
+        createField("author", "User", {
+          relationName: "UserPosts",
+          relationFromFields: ["author_user_id"],
+          relationToFields: ["user_id"],
+        }),
+      ]);
+      const dmmf = createMockDMMF([userModel, postModel]);
+      const result = transformSchema(dmmf, configWithRemap);
+
+      const transformedUser = result.models.find(m => m.modelName === "User");
+      const transformedPost = result.models.find(m => m.modelName === "Post");
+
+      expect(transformedUser?.columns).toHaveProperty("userId");
+      expect(transformedPost?.columns).toHaveProperty("postId");
+      expect(transformedPost?.columns).toHaveProperty("authorUserId"); // FK column remapped
+
+      // Check relationship on User side (many)
+      const userPostsRel = transformedUser?.relationships?.posts;
+      expect(userPostsRel?.type).toBe("many");
+      if (userPostsRel && "sourceField" in userPostsRel) {
+        expect(userPostsRel.sourceField).toEqual(["userId"]); // Remapped PK
+        expect(userPostsRel.destField).toEqual(["authorUserId"]); // Remapped FK
+      } else {
+        throw new Error("Unexpected relationship structure for User.posts");
+      }
+
+      // Check relationship on Post side (one)
+      const postAuthorRel = transformedPost?.relationships?.author;
+      expect(postAuthorRel?.type).toBe("one");
+      if (postAuthorRel && "sourceField" in postAuthorRel) {
+        expect(postAuthorRel.sourceField).toEqual(["authorUserId"]); // Remapped FK
+        expect(postAuthorRel.destField).toEqual(["userId"]); // Remapped PK
+      } else {
+        throw new Error("Unexpected relationship structure for Post.author");
+      }
+    });
+
+     it("should remap fields in implicit M:N join table relationships", () => {
+        const postModel = createModel("Post", [
+          createField("post_id", "Int", { isId: true }), // Remapped ID
+          createField("categories", "Category", {
+            isList: true,
+            relationName: "PostToCategory",
+            kind: "object",
+          }),
+        ]);
+
+        const categoryModel = createModel("Category", [
+          createField("category_id", "Int", { isId: true }), // Remapped ID
+          createField("posts", "Post", {
+            isList: true,
+            relationName: "PostToCategory",
+            kind: "object",
+          }),
+        ]);
+
+        const dmmf = createMockDMMF([postModel, categoryModel]);
+        const result = transformSchema(dmmf, configWithRemap);
+
+        const joinTable = result.models.find((m) => m.modelName === "_PostToCategory");
+        expect(joinTable).toBeDefined();
+
+        // Check relationships within the join table model
+        const relA = joinTable?.relationships?.modelA; // Assuming Category comes first alphabetically
+        const relB = joinTable?.relationships?.modelB; // Assuming Post comes second
+
+        expect(relA?.type).toBe("one");
+        expect(relB?.type).toBe("one");
+
+        if (relA && "destField" in relA) {
+           expect(relA.destField).toEqual(["categoryId"]); // Should point to remapped ID
+        } else {
+           throw new Error("Unexpected relationship structure for joinTable.modelA");
+        }
+         if (relB && "destField" in relB) {
+           expect(relB.destField).toEqual(["postId"]); // Should point to remapped ID
+        } else {
+           throw new Error("Unexpected relationship structure for joinTable.modelB");
+        }
+
+         // Also check the chained relationships on the original models
+         const postCategoriesRel = result.models.find(m => m.modelName === "Post")?.relationships?.categories;
+         expect(postCategoriesRel?.type).toBe("many");
+         if (postCategoriesRel && "chain" in postCategoriesRel) {
+             expect(postCategoriesRel.chain[0].sourceField).toEqual(["postId"]); // Remapped Post ID
+             expect(postCategoriesRel.chain[0].destField).toEqual(["B"]); // Join table column
+             expect(postCategoriesRel.chain[1].sourceField).toEqual(["A"]); // Join table column
+             expect(postCategoriesRel.chain[1].destField).toEqual(["categoryId"]); // Remapped Category ID
+         } else {
+             throw new Error("Unexpected relationship structure for Post.categories");
+         }
+     });
+
+  });
 });
+// End of main describe block

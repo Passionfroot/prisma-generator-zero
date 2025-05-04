@@ -5,6 +5,7 @@ export type Config = {
   prettier: boolean;
   resolvePrettierConfig: boolean;
   remapTablesToCamelCase: boolean;
+  remapColumnsToCamelCase: boolean; // Added for column remapping
   excludeTables?: string[];
   enumAsUnion?: boolean;
 };

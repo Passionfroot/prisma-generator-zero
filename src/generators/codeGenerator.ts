@@ -70,7 +70,7 @@ function generateColumnDefinition(name: string, mapping: ZeroTypeMapping): strin
 }
 
 function generateModelSchema(model: ZeroModel): string {
-  let output = `export const ${model.zeroTableName} = table("${model.tableName}")`;
+  let output = `export const ${model.zeroTableName} = table("${model.modelName}")`;
 
   // Add .from() if we have an original table name
   if (model.originalTableName) {
@@ -176,7 +176,7 @@ function generateSchema(schema: TransformedSchema): string {
   output += "// Define types\n";
   output += "export type Schema = typeof schema;\n";
   schema.models.forEach((model) => {
-    output += `export type ${model.modelName} = Row<typeof schema.tables.${model.tableName}>;\n`;
+    output += `export type ${model.modelName} = Row<typeof schema.tables.${model.modelName}>;\n`;
   });
 
   return output;

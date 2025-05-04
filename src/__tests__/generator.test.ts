@@ -189,6 +189,27 @@ describe("Generator", () => {
       // Verify the output includes .from() calls for mapped columns
       expect(content).toContain("senderID: string().from('sender_id').optional()");
       expect(content).toContain("mediumID: string().from('medium_id').optional()");
+      expect(content).toMatchSnapshot(); // Add snapshot assertion for the @map test
+    });
+
+    it("should handle model @@map directive correctly", async () => {
+      // Define the model with @@map
+      const cdrModel = createModel(
+        "cdr", // Original Prisma model name
+        [createField("id", "String", { isId: true })], // Example field
+        { dbName: "xml_cdr" } // Simulates @@map("xml_cdr")
+      );
+
+      // Generate options and run generator
+      const options = createTestOptions(createMockDMMF([cdrModel]));
+      await onGenerate(options);
+
+      // Get generated content
+      const [, contentBuffer] = vi.mocked(fs.writeFile).mock.calls[0];
+      const content = contentBuffer.toString();
+
+      // Assert against snapshot
+      expect(content).toMatchSnapshot();
     });
   });
 
