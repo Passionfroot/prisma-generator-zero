@@ -1,4 +1,4 @@
-import { generatorHandler, GeneratorOptions } from "@prisma/generator-helper";
+import { GeneratorConfig, generatorHandler, GeneratorOptions } from "@prisma/generator-helper";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { version } from "../package.json";
@@ -20,13 +20,15 @@ export async function onGenerate(options: GeneratorOptions) {
     prettier: generator.config.prettier === "true", // Default false,
     resolvePrettierConfig: generator.config.resolvePrettierConfig !== "false", // Default true
     remapTablesToCamelCase: generator.config.remapTablesToCamelCase === "true", // Default false
+    excludeTables: loadExcludeTables(generator),
+    enumAsUnion: generator.config.enumAsUnion === "true",
   } satisfies Config;
 
   // Transform the schema
   const transformedSchema = transformSchema(dmmf, config);
 
   // Generate code
-  let output = generateCode(transformedSchema);
+  let output = generateCode(transformedSchema, config);
 
   // Apply prettier if configured
   if (config.prettier) {
@@ -59,3 +61,20 @@ generatorHandler({
   },
   onGenerate,
 });
+
+/**
+ * Load the excludeTables from the generator config
+ */
+function loadExcludeTables(generator: GeneratorConfig) {
+  const value = generator.config.excludeTables;
+
+  if (value === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw new Error("excludeTables must be an array");
+  }
+
+  return value;
+}

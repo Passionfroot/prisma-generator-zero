@@ -24,6 +24,8 @@ Then run the following command to generate the `schema.ts` file in the `./genera
 npx prisma generate
 ```
 
+> Note that unsupported column types (eg. `string[]`) will be automatically excluded from the generated schema.
+
 Now import the generated schema into your `schema` file and define your own permissions.
 
 ```ts
@@ -57,5 +59,11 @@ generator zero {
   // When true, the generator will remap table names to camel case using Zero's `.from()` method.
   // You can read more about it here https://zero.rocicorp.dev/docs/zero-schema#name-mapping
   remapTablesToCamelCase = true
+  // Optional list of Prisma Model names you want to exclude from the generated schema.
+  // Helpful if you want to exclude Views (not supported by Zero) or other tables
+  // you don't want Zero client to have access to
+  excludeTables = ["Posts", "Comments", ...]
+  // Produce union type for Enums instead of TypeScript Enums
+  enumAsUnion = true
 }
 ```

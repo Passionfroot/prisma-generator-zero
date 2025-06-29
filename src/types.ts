@@ -5,11 +5,14 @@ export type Config = {
   prettier: boolean;
   resolvePrettierConfig: boolean;
   remapTablesToCamelCase: boolean;
+  excludeTables?: string[];
+  enumAsUnion?: boolean;
 };
 
 export type ZeroTypeMapping = {
   type: string;
   isOptional?: boolean;
+  mappedName?: string;
 };
 
 export type ZeroRelationshipLink = {

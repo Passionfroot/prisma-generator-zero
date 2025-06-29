@@ -66,35 +66,40 @@ function createImplicitManyToManyModel(
 
   const tableName = getTableName(originalTableName, config);
 
+  // Find the ID fields for modelA and modelB
+  const idFieldA = modelA.fields.find((f) => f.isId);
+  const idFieldB = modelB.fields.find((f) => f.isId);
+
+  if (!idFieldA) {
+    throw new Error(`Implicit relation ${relationName}: Model ${modelA.name} has no @id field.`);
+  }
+  if (!idFieldB) {
+    throw new Error(`Implicit relation ${relationName}: Model ${modelB.name} has no @id field.`);
+  }
+
+  // Map the Prisma types of the ID fields to Zero types
+  const columnAType = mapPrismaTypeToZero(idFieldA);
+  const columnBType = mapPrismaTypeToZero(idFieldB);
+
   return {
     tableName,
     originalTableName,
     modelName: originalTableName,
     zeroTableName: getZeroTableName(originalTableName),
     columns: {
-      A: {
-        type: "string()",
-        isOptional: false,
-      },
-      B: {
-        type: "string()",
-        isOptional: false,
-      },
+      A: columnAType,
+      B: columnBType,
     },
     relationships: {
       modelA: {
         sourceField: ["A"],
-        destField: modelA.fields.find((f) => f.isId)?.name
-          ? [modelA.fields.find((f) => f.isId)!.name]
-          : [],
+        destField: [idFieldA.name],
         destSchema: getZeroTableName(modelA.name),
         type: "one",
       },
       modelB: {
         sourceField: ["B"],
-        destField: modelB.fields.find((f) => f.isId)?.name
-          ? [modelB.fields.find((f) => f.isId)!.name]
-          : [],
+        destField: [idFieldB.name],
         destSchema: getZeroTableName(modelB.name),
         type: "one",
       },
@@ -106,7 +111,7 @@ function createImplicitManyToManyModel(
 function mapRelationships(
   model: DMMF.Model,
   dmmf: DMMF.Document,
-  config?: Config
+  config: Config
 ): Record<string, ZeroRelationship> | undefined {
   const relationships: Record<string, ZeroRelationship> = {};
 
@@ -116,6 +121,11 @@ function mapRelationships(
       const targetModel = dmmf.datamodel.models.find((m) => m.name === field.type);
       if (!targetModel) {
         throw new Error(`Target model ${field.type} not found for relationship ${field.name}`);
+      }
+
+      // Skip the field if the target model is excluded
+      if (config.excludeTables?.includes(targetModel.name)) {
+        return;
       }
 
       const backReference = targetModel.fields.find(
@@ -152,8 +162,10 @@ function mapRelationships(
           };
         } else {
           // Regular one-to-many relationship
+          // Use primaryKey fields first (for @@id), fallback to isId field (for @id)
           const idField = model.fields.find((f) => f.isId)?.name;
-          const sourceFields = idField ? [idField] : [];
+          const primaryKeyFields = model.primaryKey?.fields || (idField ? [idField] : []);
+          const sourceFields = ensureStringArray(primaryKeyFields);
           const destFields = backReference?.relationFromFields
             ? ensureStringArray(backReference.relationFromFields)
             : [];
@@ -197,6 +209,9 @@ function mapModel(model: DMMF.Model, dmmf: DMMF.Document, config: Config): ZeroM
 
   model.fields
     .filter((field) => !field.relationName)
+    // Filter out list fields as Zero doesn't currently support arrays
+    // https://zero.rocicorp.dev/docs/postgres-support#column-types
+    .filter((field) => !field.isList)
     .forEach((field) => {
       columns[field.name] = mapPrismaTypeToZero(field);
     });
@@ -227,15 +242,23 @@ export function transformSchema(
   dmmf: DMMF.Document,
   config: Config
 ): TransformedSchema {
-  const models = dmmf.datamodel.models.map((model) => mapModel(model, dmmf, config));
+  // Filter out excluded models
+  const filteredModels = dmmf.datamodel.models.filter(model => {
+    return !config.excludeTables?.includes(model.name);
+  });
+
+  const models = filteredModels.map((model) => mapModel(model, dmmf, config));
 
   // Add implicit many-to-many join tables (but don't include them in the final schema)
-  const implicitJoinTables = dmmf.datamodel.models.flatMap((model) => {
+  const implicitJoinTables = filteredModels.flatMap((model) => {
     return model.fields
       .filter((field) => field.relationName && field.isList)
       .map((field) => {
         const targetModel = dmmf.datamodel.models.find((m) => m.name === field.type);
         if (!targetModel) return null;
+
+        // Skip if either model is excluded
+        if (config.excludeTables?.includes(targetModel.name)) return null;
 
         const backReference = targetModel.fields.find(
           (f) => f.relationName === field.relationName && f.type === model.name

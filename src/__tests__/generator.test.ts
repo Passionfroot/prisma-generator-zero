@@ -97,6 +97,41 @@ describe("Generator", () => {
       expect(content).toMatchSnapshot();
     });
 
+    it("should handle enums as unions correctly", async () => {
+      const mockEnum: DMMF.DatamodelEnum = {
+        name: "Role",
+        values: [
+          { name: "USER", dbName: null },
+          { name: "ADMIN", dbName: null },
+        ],
+        dbName: null,
+      };
+
+      const mockModel: DMMF.Model = {
+        name: "User",
+        dbName: null,
+        fields: [
+          createField("id", "String", { isId: true }),
+          createField("role", "Role", { kind: "enum" }),
+        ],
+        uniqueFields: [],
+        uniqueIndexes: [],
+        primaryKey: null,
+      };
+
+      const options = createTestOptions(createMockDMMF([mockModel], [mockEnum]));
+
+      // Set the enumAsUnion configuration option to true
+      options.generator.config.enumAsUnion = "true";
+
+      await onGenerate(options);
+
+      const [, contentBuffer] = vi.mocked(fs.writeFile).mock.calls[0];
+      const content = contentBuffer.toString();
+
+      expect(content).toMatchSnapshot();
+    });
+
     it("should handle relationships correctly", async () => {
       // Create User model with a one-to-many relationship to Post
       const userModel = createModel("User", [
@@ -131,6 +166,29 @@ describe("Generator", () => {
 
       // Verify the generated code contains the relationship definitions
       expect(content).toMatchSnapshot();
+    });
+
+    it("should generate correct schema for model with @map attributes", async () => {
+      const messageModel = createModel("message", [
+        createField("id", "String", { isId: true, dbName: null }), // No @map
+        createField("senderID", "String", {
+          isRequired: false,
+          dbName: "sender_id", // @map("sender_id")
+        }),
+        createField("mediumID", "String", {
+          isRequired: false,
+          dbName: "medium_id", // @map("medium_id")
+        }),
+      ]);
+
+      await onGenerate(createTestOptions(createMockDMMF([messageModel])));
+
+      const [, contentBuffer] = vi.mocked(fs.writeFile).mock.calls[0];
+      const content = contentBuffer.toString();
+
+      // Verify the output includes .from() calls for mapped columns
+      expect(content).toContain("senderID: string().from('sender_id').optional()");
+      expect(content).toContain("mediumID: string().from('medium_id').optional()");
     });
   });
 
