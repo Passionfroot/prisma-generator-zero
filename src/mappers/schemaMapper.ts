@@ -209,9 +209,6 @@ function mapModel(model: DMMF.Model, dmmf: DMMF.Document, config: Config): ZeroM
 
   model.fields
     .filter((field) => !field.relationName)
-    // Filter out list fields as Zero doesn't currently support arrays
-    // https://zero.rocicorp.dev/docs/postgres-support#column-types
-    .filter((field) => !field.isList)
     .forEach((field) => {
       columns[field.name] = mapPrismaTypeToZero(field);
     });
