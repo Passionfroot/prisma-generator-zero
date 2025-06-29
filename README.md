@@ -24,7 +24,6 @@ Then run the following command to generate the `schema.ts` file in the `./genera
 npx prisma generate
 ```
 
-> Note that unsupported column types (eg. `string[]`) will be automatically excluded from the generated schema.
 
 Now import the generated schema into your `schema` file and define your own permissions.
 
@@ -47,6 +46,48 @@ export const permissions = definePermissions<ClerkAuthData, Schema>(generatedSch
 > For more information on `definePermissions` see the [official docs](https://zero.rocicorp.dev/docs/permissions)
 
 You can directly use the generated schema as explained [here](https://zero.rocicorp.dev/docs/zero-schema#building-the-zero-schema) and/or reference specific exports anywhere else in your code.
+
+## Postgres Array Support
+
+Since Zero doesn't natively support Postgres arrays, this generator automatically maps array fields to JSON storage while preserving TypeScript type safety:
+
+```prisma
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  tags        String[] // Maps to json<string[]>()
+  scores      Int[]    // Maps to json<number[]>()
+  categories  Category[] // Maps to json<Category[]>() for enum arrays
+}
+
+enum Category {
+  TECH
+  BUSINESS
+  LIFESTYLE
+}
+```
+
+The generated Zero schema will include:
+
+```ts
+export const userTable = table("User")
+  .columns({
+    id: string(),
+    email: string(),
+    tags: json<string[]>(),
+    scores: json<number[]>(),
+    categories: json<Category[]>(),
+  })
+  .primaryKey("id");
+```
+
+### Supported Array Types
+
+- **Scalar arrays**: `String[]`, `Int[]`, `Float[]`, `Boolean[]`, `DateTime[]`, `BigInt[]`, `Decimal[]`
+- **Enum arrays**: `MyEnum[]`
+- **Optional arrays**: `String[]?` → `json<string[]>().optional()`
+
+## Configuration
 
 If you want to customize the behavior of the generator you can use the following options:
 

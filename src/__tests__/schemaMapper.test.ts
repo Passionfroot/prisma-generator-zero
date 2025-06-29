@@ -337,4 +337,42 @@ describe("Schema Mapper", () => {
       expect(joinTable.columns.B.type).toBe("number()");
     }
   });
+
+  describe("array fields", () => {
+    it("should include array fields in the schema", () => {
+      const model = createModel("User", [
+        createField("id", "String", { isId: true }),
+        createField("email", "String"),
+        createField("tags", "String", { isList: true }),
+        createField("scores", "Int", { isList: true, isRequired: false }),
+      ]);
+
+      const dmmf = createMockDMMF([model]);
+      const result = transformSchema(dmmf, baseConfig);
+      
+      const userModel = result.models[0];
+      expect(userModel.columns).toHaveProperty("tags");
+      expect(userModel.columns).toHaveProperty("scores");
+      
+      // Verify array fields are mapped to json with type annotations
+      expect(userModel.columns.tags.type).toBe("json<string[]>()");
+      expect(userModel.columns.scores.type).toBe("json<number[]>()");
+      expect(userModel.columns.scores.isOptional).toBe(true);
+    });
+
+    it("should handle enum array fields", () => {
+      const model = createModel("Product", [
+        createField("id", "String", { isId: true }),
+        createField("name", "String"),
+        createField("categories", "Category", { kind: "enum", isList: true }),
+      ]);
+
+      const dmmf = createMockDMMF([model]);
+      const result = transformSchema(dmmf, baseConfig);
+      
+      const productModel = result.models[0];
+      expect(productModel.columns).toHaveProperty("categories");
+      expect(productModel.columns.categories.type).toBe("json<Category[]>()");
+    });
+  });
 });

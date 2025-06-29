@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DMMF, GeneratorOptions } from "@prisma/generator-helper";
 import * as fs from "fs/promises";
 import { onGenerate } from "../generator";
-import { createField, createModel, createMockDMMF } from "./utils";
+import { createField, createModel, createMockDMMF, createEnum } from "./utils";
 
 // Mock fs/promises
 vi.mock("fs/promises", () => ({
@@ -200,7 +200,7 @@ describe("Generator", () => {
         createField("title", "String"),
         createField("categories", "Category", {
           isList: true,
-          // relationName: "PostToCategory",
+          relationName: "PostToCategory",
           kind: "object",
         }),
       ]);
@@ -211,7 +211,7 @@ describe("Generator", () => {
         createField("name", "String"),
         createField("posts", "Post", {
           isList: true,
-          // relationName: "PostToCategory",
+          relationName: "PostToCategory",
           kind: "object",
         }),
       ]);
@@ -267,6 +267,50 @@ describe("Generator", () => {
       const generatedCode = writeFileCall[1] as string;
 
       expect(generatedCode).toMatchSnapshot();
+    });
+
+    it("should handle array fields correctly", async () => {
+      const userModel = createModel("User", [
+        createField("id", "String", { isId: true }),
+        createField("email", "String"),
+        createField("tags", "String", { isList: true }),
+        createField("scores", "Int", { isList: true, isRequired: false }),
+        createField("features", "Json", { isList: true }),
+      ]);
+
+      const options = createTestOptions(createMockDMMF([userModel]));
+      
+      // Mock readFile to return null (no existing schema)
+      vi.mocked(fs.readFile).mockRejectedValue(new Error("File not found"));
+      
+      await onGenerate(options);
+      
+      const [, contentBuffer] = vi.mocked(fs.writeFile).mock.calls[0];
+      const content = contentBuffer.toString();
+      
+      expect(content).toMatchSnapshot();
+    });
+
+    it("should handle array fields with enums correctly", async () => {
+      const statusEnum = createEnum("Status", ["ACTIVE", "INACTIVE", "PENDING"]);
+      
+      const productModel = createModel("Product", [
+        createField("id", "String", { isId: true }),
+        createField("name", "String"),
+        createField("statuses", "Status", { kind: "enum", isList: true }),
+      ]);
+
+      const options = createTestOptions(createMockDMMF([productModel], [statusEnum]));
+      
+      // Mock readFile to return null (no existing schema)
+      vi.mocked(fs.readFile).mockRejectedValue(new Error("File not found"));
+      
+      await onGenerate(options);
+      
+      const [, contentBuffer] = vi.mocked(fs.writeFile).mock.calls[0];
+      const content = contentBuffer.toString();
+      
+      expect(content).toMatchSnapshot();
     });
   });
 });
